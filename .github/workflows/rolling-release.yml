@@ -1,0 +1,283 @@
+name: Rolling release
+
+# Builds installers for every commit on main that passes CI and publishes
+# them as the "rolling" prerelease. The release is replaced only after all
+# platform builds succeeded, and only by the newest commit on main.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  NODE_VERSION: 24
+  RELEASE_TAG: rolling
+  RELEASE_NAME: OxidizeESP Rolling Release
+  # Commit validated by CI (workflow_run) or selected for a manual run.
+  SOURCE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+jobs:
+  # Pushes are validated by the CI workflow that triggers this one. Manual
+  # runs validate here.
+  validate:
+    name: Validate
+    if: github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/ci.yml
+
+  build:
+    name: Build ${{ matrix.name }}
+    needs: validate
+    if: >-
+      always() &&
+      (needs.validate.result == 'success' || needs.validate.result == 'skipped') &&
+      (github.event_name == 'workflow_dispatch' ||
+        (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'))
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - name: macOS arm64
+            runner: macos-latest
+            target: aarch64-apple-darwin
+            bundles: dmg
+            source: bundle/dmg/*.dmg
+            asset: OxidizeESP-macos-arm64.dmg
+          - name: macOS x64
+            runner: macos-latest
+            target: x86_64-apple-darwin
+            bundles: dmg
+            source: bundle/dmg/*.dmg
+            asset: OxidizeESP-macos-x64.dmg
+          - name: Windows x64
+            runner: windows-latest
+            target: x86_64-pc-windows-msvc
+            bundles: nsis
+            source: bundle/nsis/*-setup.exe
+            asset: OxidizeESP-windows-x64-setup.exe
+    runs-on: ${{ matrix.runner }}
+    concurrency:
+      # A newer commit supersedes builds that are still running.
+      group: rolling-build-${{ matrix.target }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: apps/desktop
+        run: npm ci
+
+      # Code signing is optional. When the corresponding repository secrets
+      # are configured they are exported for the Tauri bundler; otherwise the
+      # macOS app is ad-hoc signed and the Windows installer is unsigned.
+      - name: Configure macOS signing
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [ -n "$APPLE_CERTIFICATE" ] && [ -n "$APPLE_SIGNING_IDENTITY" ]; then
+            {
+              echo "APPLE_CERTIFICATE=$APPLE_CERTIFICATE"
+              echo "APPLE_CERTIFICATE_PASSWORD=$APPLE_CERTIFICATE_PASSWORD"
+              echo "APPLE_SIGNING_IDENTITY=$APPLE_SIGNING_IDENTITY"
+            } >> "$GITHUB_ENV"
+            if [ -n "$APPLE_ID" ] && [ -n "$APPLE_PASSWORD" ] && [ -n "$APPLE_TEAM_ID" ]; then
+              {
+                echo "APPLE_ID=$APPLE_ID"
+                echo "APPLE_PASSWORD=$APPLE_PASSWORD"
+                echo "APPLE_TEAM_ID=$APPLE_TEAM_ID"
+              } >> "$GITHUB_ENV"
+              echo "Signing and notarizing with the configured Developer ID."
+            else
+              echo "Signing with the configured Developer ID without notarization."
+            fi
+          else
+            echo "No signing certificate configured; the app is ad-hoc signed."
+          fi
+
+      - name: Build application
+        working-directory: apps/desktop
+        shell: bash
+        run: npx tauri build --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} --ci
+
+      - name: Stage installer
+        shell: bash
+        run: |
+          mkdir -p staging
+          shopt -s nullglob
+          files=(target/${{ matrix.target }}/release/${{ matrix.source }})
+          if [ ${#files[@]} -ne 1 ]; then
+            echo "::error::Expected exactly one installer, found ${#files[@]}: ${files[*]}"
+            exit 1
+          fi
+          cp "${files[0]}" "staging/${{ matrix.asset }}"
+          ls -l staging
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: installer-${{ matrix.target }}
+          path: staging/${{ matrix.asset }}
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    name: Publish rolling release
+    needs: build
+    if: always() && needs.build.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      # Never interrupt a publish in progress; newer runs wait for it.
+      group: rolling-publish
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      STAGING_TAG: rolling-staging-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: installer-*
+          path: dist
+          merge-multiple: true
+
+      - name: Verify artifacts and compute checksums
+        working-directory: dist
+        run: |
+          for f in OxidizeESP-macos-arm64.dmg OxidizeESP-macos-x64.dmg OxidizeESP-windows-x64-setup.exe; do
+            if [ ! -s "$f" ]; then
+              echo "::error::Missing or empty artifact $f"
+              exit 1
+            fi
+          done
+          sha256sum OxidizeESP-* > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Check that this commit is still the newest on main
+        id: head
+        run: |
+          head=$(gh api "repos/$GH_REPO/commits/main" --jq .sha)
+          if [ "$head" != "$SOURCE_SHA" ]; then
+            echo "main has moved to $head; a newer run will publish."
+            echo "current=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Write release notes
+        if: steps.head.outputs.current == 'true'
+        run: |
+          short=${SOURCE_SHA::7}
+          server=${GITHUB_SERVER_URL}/${GH_REPO}
+          cat > notes.md <<EOF
+          Automated build of the latest commit on \`main\`. Rolling releases are untested development builds and are replaced on every push.
+
+          **Commit:** [\`${short}\`](${server}/commit/${SOURCE_SHA})
+          **Build:** [run ${GITHUB_RUN_NUMBER}](${server}/actions/runs/${GITHUB_RUN_ID}), $(date -u +"%Y-%m-%d %H:%M UTC")
+
+          ### Downloads
+
+          | Platform | File |
+          | --- | --- |
+          | macOS, Apple Silicon | \`OxidizeESP-macos-arm64.dmg\` |
+          | macOS, Intel | \`OxidizeESP-macos-x64.dmg\` |
+          | Windows x64 | \`OxidizeESP-windows-x64-setup.exe\` |
+
+          Verify downloads against \`SHA256SUMS.txt\`.
+
+          ### Signing
+
+          Unless signing credentials are configured for this repository, the macOS app is only ad-hoc signed and not notarized, and the Windows installer is not code signed. macOS Gatekeeper and Windows SmartScreen will show warnings when the application is opened for the first time.
+          EOF
+
+      - name: Stage draft release
+        if: steps.head.outputs.current == 'true'
+        id: draft
+        run: |
+          # Drafts do not create their tag, so a unique temporary tag name
+          # keeps the staged release separate from the published one.
+          gh release create "$STAGING_TAG" dist/* \
+            --draft --prerelease --latest=false \
+            --title "$RELEASE_NAME" --notes-file notes.md --target "$SOURCE_SHA"
+          id=$(gh api "repos/$GH_REPO/releases" --paginate \
+            --jq ".[] | select(.draft and .tag_name == \"$STAGING_TAG\") | .id")
+          if [ -z "$id" ]; then
+            echo "::error::The staged draft release could not be found."
+            exit 1
+          fi
+          assets=$(gh api "repos/$GH_REPO/releases/$id" --jq '.assets | length')
+          if [ "$assets" -ne 4 ]; then
+            echo "::error::Expected 4 assets on the draft release, found $assets."
+            exit 1
+          fi
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+
+      - name: Publish release
+        if: steps.head.outputs.current == 'true'
+        env:
+          DRAFT_ID: ${{ steps.draft.outputs.id }}
+        run: |
+          # Re-check right before switching: a newer commit must not be
+          # replaced by this older build.
+          head=$(gh api "repos/$GH_REPO/commits/main" --jq .sha)
+          if [ "$head" != "$SOURCE_SHA" ]; then
+            echo "main moved to $head while staging; discarding this draft."
+            gh api -X DELETE "repos/$GH_REPO/releases/$DRAFT_ID"
+            exit 0
+          fi
+
+          # Point the rolling tag at the commit the binaries were built from.
+          if gh api "repos/$GH_REPO/git/ref/tags/$RELEASE_TAG" > /dev/null 2>&1; then
+            gh api -X PATCH "repos/$GH_REPO/git/refs/tags/$RELEASE_TAG" -f sha="$SOURCE_SHA" -F force=true > /dev/null
+          else
+            gh api -X POST "repos/$GH_REPO/git/refs" -f ref="refs/tags/$RELEASE_TAG" -f sha="$SOURCE_SHA" > /dev/null
+          fi
+
+          # Remove the previously published rolling release, then publish the
+          # fully uploaded draft in its place.
+          for old in $(gh api "repos/$GH_REPO/releases" --paginate \
+              --jq ".[] | select(.tag_name == \"$RELEASE_TAG\" and (.draft | not)) | .id"); do
+            gh api -X DELETE "repos/$GH_REPO/releases/$old"
+          done
+          gh api -X PATCH "repos/$GH_REPO/releases/$DRAFT_ID" \
+            -F draft=false -F prerelease=true -f make_latest=false \
+            -f tag_name="$RELEASE_TAG" -f target_commitish="$SOURCE_SHA" > /dev/null
+          echo "Published $RELEASE_NAME for $SOURCE_SHA."
+
+      - name: Remove draft after failure
+        if: failure() && steps.draft.outputs.id != ''
+        env:
+          DRAFT_ID: ${{ steps.draft.outputs.id }}
+        run: |
+          state=$(gh api "repos/$GH_REPO/releases/$DRAFT_ID" --jq .draft 2>/dev/null || echo missing)
+          if [ "$state" = "true" ]; then
+            gh api -X DELETE "repos/$GH_REPO/releases/$DRAFT_ID"
+          fi
