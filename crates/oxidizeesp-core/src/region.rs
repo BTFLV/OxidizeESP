@@ -56,9 +56,8 @@ impl FlashRegion {
         if self.length == 0 {
             return Err(Error::invalid_input("The length must be greater than zero."));
         }
-        let end = self.end().ok_or_else(|| {
-            Error::invalid_input("The region extends beyond the 32-bit address space.")
-        })?;
+        let end =
+            self.end().ok_or_else(|| Error::invalid_input("The region extends beyond the 32-bit address space."))?;
         if end > MAX_FLASH_SIZE {
             return Err(Error::invalid_input(format!(
                 "The region ends at {}, beyond the maximum supported flash size of 256 MiB.",

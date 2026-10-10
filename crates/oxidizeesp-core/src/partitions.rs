@@ -10,8 +10,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use crate::{
-    Error, Result,
-    fsutil,
+    Error, Result, fsutil,
     region::{FlashRegion, format_address, format_size},
 };
 
@@ -98,9 +97,8 @@ pub fn parse(data: &[u8]) -> Result<(PartitionTable, TableFormat)> {
             std::panic::catch_unwind(move || PartitionTable::try_from_bytes(bytes))
         }
         TableFormat::Csv => {
-            let text = String::from_utf8(data.to_vec()).map_err(|_| {
-                Error::invalid_file("The file is neither a binary partition table nor UTF-8 CSV text.")
-            })?;
+            let text = String::from_utf8(data.to_vec())
+                .map_err(|_| Error::invalid_file("The file is neither a binary partition table nor UTF-8 CSV text."))?;
             std::panic::catch_unwind(move || PartitionTable::try_from_str(text))
         }
     };
@@ -148,7 +146,12 @@ pub fn to_entries(table: &PartitionTable) -> Vec<PartitionEntry> {
 
 /// Build the display model, including layout checks that go beyond the
 /// structural validation performed while parsing.
-pub fn view(table: &PartitionTable, format: TableFormat, flash_size: Option<u32>, table_offset: u32) -> PartitionTableView {
+pub fn view(
+    table: &PartitionTable,
+    format: TableFormat,
+    flash_size: Option<u32>,
+    table_offset: u32,
+) -> PartitionTableView {
     let mut entries = to_entries(table);
     entries.sort_by_key(|e| e.offset);
     let mut issues = Vec::new();
@@ -169,10 +172,7 @@ pub fn view(table: &PartitionTable, format: TableFormat, flash_size: Option<u32>
             issues.push(PartitionIssue {
                 severity: IssueSeverity::Error,
                 partition: Some(e.name.clone()),
-                message: format!(
-                    "Overlaps the partition table at {}.",
-                    format_address(table_offset)
-                ),
+                message: format!("Overlaps the partition table at {}.", format_address(table_offset)),
             });
         }
         if e.offset < table_offset {
@@ -207,14 +207,7 @@ pub fn view(table: &PartitionTable, format: TableFormat, flash_size: Option<u32>
     }
     let end_address = entries.iter().filter_map(|e| e.offset.checked_add(e.size)).max().unwrap_or(0);
 
-    PartitionTableView {
-        entries,
-        source_format: format,
-        end_address,
-        issues,
-        flash_size,
-        table_offset,
-    }
+    PartitionTableView { entries, source_format: format, end_address, issues, flash_size, table_offset }
 }
 
 pub fn to_binary(table: &PartitionTable) -> Result<Vec<u8>> {

@@ -231,9 +231,7 @@ fn validate_options(chip: Chip, options: &ImageOptions) -> Result<()> {
     if let Some(offset) = options.partition_table_offset
         && (!offset.is_multiple_of(0x1000) || offset < 0x8000)
     {
-        return Err(Error::invalid_input(
-            "The partition table offset must be 4 KiB aligned and at least 0x8000.",
-        ));
+        return Err(Error::invalid_input("The partition table offset must be 4 KiB aligned and at least 0x8000."));
     }
     if let Some(freq) = options.flash.frequency
         && !chip.to_espflash().flash_frequency_encodings().contains_key(&freq.to_espflash())
@@ -260,10 +258,7 @@ fn validate_options(chip: Chip, options: &ImageOptions) -> Result<()> {
 }
 
 fn serde_plain_name<T: Serialize>(value: &T) -> String {
-    serde_json::to_value(value)
-        .ok()
-        .and_then(|v| v.as_str().map(str::to_owned))
-        .unwrap_or_default()
+    serde_json::to_value(value).ok().and_then(|v| v.as_str().map(str::to_owned)).unwrap_or_default()
 }
 
 /// Build the flashable segments for an ELF file.
@@ -349,11 +344,8 @@ pub fn prepare(
     let app_size = metadata.get("app_size").and_then(|v| v.parse().ok()).unwrap_or(0);
     let app_partition_size = metadata.get("part_size").and_then(|v| v.parse().ok()).unwrap_or(0);
 
-    let segments: Vec<OwnedSegment> = image
-        .flash_segments()
-        .into_iter()
-        .map(|s| OwnedSegment { addr: s.addr, data: s.data.into_owned() })
-        .collect();
+    let segments: Vec<OwnedSegment> =
+        image.flash_segments().into_iter().map(|s| OwnedSegment { addr: s.addr, data: s.data.into_owned() }).collect();
 
     let labels = ["Bootloader", "Partition table", "Application"];
     let segment_info = segments
@@ -409,9 +401,7 @@ pub fn prepare(
 }
 
 fn partition_source_format(path: Option<&str>) -> TableFormat {
-    path.and_then(|p| std::fs::read(p).ok())
-        .map(|d| partitions::detect_format(&d))
-        .unwrap_or(TableFormat::Csv)
+    path.and_then(|p| std::fs::read(p).ok()).map(|d| partitions::detect_format(&d)).unwrap_or(TableFormat::Csv)
 }
 
 /// Request to preview the layout of an image without writing anything.
@@ -433,9 +423,8 @@ pub fn preview(request: &PreviewImageRequest) -> Result<ImageSummary> {
     let elf = read_elf(path)?;
     let info = inspect_elf_data(path, &elf)?;
     check_chip_compatibility(&info, request.chip)?;
-    let xtal = request
-        .xtal
-        .unwrap_or_else(|| XtalFreq::from_espflash(request.chip.to_espflash().default_xtal_frequency()));
+    let xtal =
+        request.xtal.unwrap_or_else(|| XtalFreq::from_espflash(request.chip.to_espflash().default_xtal_frequency()));
     prepare(&elf, request.chip, xtal, &request.options, request.flash_size.unwrap_or(FlashSize::Mb4), request.revision)
         .map(|p| p.summary)
 }
@@ -481,9 +470,8 @@ pub fn save_image(request: &SaveImageRequest) -> Result<SaveImageResult> {
         return Err(Error::invalid_input("The output file must differ from the input ELF."));
     }
 
-    let xtal = request
-        .xtal
-        .unwrap_or_else(|| XtalFreq::from_espflash(request.chip.to_espflash().default_xtal_frequency()));
+    let xtal =
+        request.xtal.unwrap_or_else(|| XtalFreq::from_espflash(request.chip.to_espflash().default_xtal_frequency()));
     let prepared = prepare(&elf, request.chip, xtal, &request.options, FlashSize::Mb4, None)?;
 
     let (bytes, flash_offset) = if request.merge {
@@ -491,10 +479,8 @@ pub fn save_image(request: &SaveImageRequest) -> Result<SaveImageResult> {
     } else {
         // Without merging, only the application image is saved, matching
         // espflash. It is written to the start of the app partition.
-        let app = prepared
-            .segments
-            .last()
-            .ok_or_else(|| Error::internal("The image contains no application segment."))?;
+        let app =
+            prepared.segments.last().ok_or_else(|| Error::internal("The image contains no application segment."))?;
         (app.data.clone(), app.addr)
     };
 
@@ -546,10 +532,8 @@ mod tests {
 
     #[test]
     fn merges_segments_with_padding() {
-        let segments = vec![
-            OwnedSegment { addr: 0x10, data: vec![2; 4] },
-            OwnedSegment { addr: 0x0, data: vec![1; 4] },
-        ];
+        let segments =
+            vec![OwnedSegment { addr: 0x10, data: vec![2; 4] }, OwnedSegment { addr: 0x0, data: vec![1; 4] }];
         let merged = merge_segments(&segments, Some(0x20)).unwrap();
         assert_eq!(merged.len(), 0x20);
         assert_eq!(&merged[..4], &[1; 4]);
@@ -563,10 +547,8 @@ mod tests {
 
     #[test]
     fn merge_rejects_overlap_and_oversize() {
-        let overlapping = vec![
-            OwnedSegment { addr: 0x0, data: vec![1; 8] },
-            OwnedSegment { addr: 0x4, data: vec![2; 4] },
-        ];
+        let overlapping =
+            vec![OwnedSegment { addr: 0x0, data: vec![1; 8] }, OwnedSegment { addr: 0x4, data: vec![2; 4] }];
         assert!(merge_segments(&overlapping, None).is_err());
         let big = vec![OwnedSegment { addr: 0x0, data: vec![1; 8] }];
         assert!(merge_segments(&big, Some(4)).is_err());
@@ -601,10 +583,7 @@ mod tests {
             log_format: None,
         };
         assert!(check_chip_compatibility(&base, Chip::Esp32c3).is_ok());
-        assert_eq!(
-            check_chip_compatibility(&base, Chip::Esp32s3).unwrap_err().kind,
-            ErrorKind::IncompatibleFirmware
-        );
+        assert_eq!(check_chip_compatibility(&base, Chip::Esp32s3).unwrap_err().kind, ErrorKind::IncompatibleFirmware);
         let unknown = ElfInfo { chip: None, chip_name: None, ..base };
         assert!(check_chip_compatibility(&unknown, Chip::Esp32).is_ok());
     }

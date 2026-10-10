@@ -113,8 +113,13 @@ pub enum PartitionSource {
 pub enum EraseTarget {
     /// Erase the entire flash chip.
     Full,
-    Region { region: FlashRegion },
-    Partitions { names: Vec<String>, source: PartitionSource },
+    Region {
+        region: FlashRegion,
+    },
+    Partitions {
+        names: Vec<String>,
+        source: PartitionSource,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -168,11 +173,7 @@ pub struct ReadPartitionTableRequest {
 }
 
 fn require_confirmation(confirmed: bool) -> Result<()> {
-    if confirmed {
-        Ok(())
-    } else {
-        Err(Error::invalid_input("This operation modifies flash and must be confirmed."))
-    }
+    if confirmed { Ok(()) } else { Err(Error::invalid_input("This operation modifies flash and must be confirmed.")) }
 }
 
 fn elapsed_ms(start: Instant) -> u64 {
@@ -220,7 +221,12 @@ fn finish_with_reset(ctx: &mut JobContext<'_>, link: &mut dyn FlashLink, options
 }
 
 /// Identify the chip on the leased device and restart it.
-pub fn probe(ctx: &mut JobContext<'_>, backend: &dyn Backend, lease: &Lease, options: &ConnectionOptions) -> Result<ChipInfo> {
+pub fn probe(
+    ctx: &mut JobContext<'_>,
+    backend: &dyn Backend,
+    lease: &Lease,
+    options: &ConnectionOptions,
+) -> Result<ChipInfo> {
     let options = ConnectionOptions { reset_after: ResetAfter::HardReset, ..options.clone() };
     // Probing must also work after the user swapped the board, so the
     // previously known identity is not enforced here.
@@ -236,7 +242,12 @@ pub fn probe(ctx: &mut JobContext<'_>, backend: &dyn Backend, lease: &Lease, opt
 
 /// Enter the ROM bootloader and leave the chip there, so the application
 /// does not run (equivalent to `espflash hold-in-reset`).
-pub fn hold_in_reset(ctx: &mut JobContext<'_>, backend: &dyn Backend, lease: &Lease, options: &ConnectionOptions) -> Result<ChipInfo> {
+pub fn hold_in_reset(
+    ctx: &mut JobContext<'_>,
+    backend: &dyn Backend,
+    lease: &Lease,
+    options: &ConnectionOptions,
+) -> Result<ChipInfo> {
     let options = ConnectionOptions { reset_after: ResetAfter::NoReset, ..options.clone() };
     let (_link, info) = connect(ctx, backend, lease, &options, WriteBehavior::default())?;
     Ok(info)
@@ -332,10 +343,8 @@ fn write_segments(
         .zip(labels.iter().cloned().chain(std::iter::repeat("Segment".to_owned())))
         .map(|(s, label)| (label, FlashRegion::new(s.addr, s.data.len() as u32)))
         .collect();
-    let ef_segments: Vec<Segment<'_>> = segments
-        .iter()
-        .map(|s| Segment { addr: s.addr, data: Cow::Borrowed(&s.data) })
-        .collect();
+    let ef_segments: Vec<Segment<'_>> =
+        segments.iter().map(|s| Segment { addr: s.addr, data: Cow::Borrowed(&s.data) }).collect();
     ctx.check_cancelled()?;
     let mut progress = WriteProgress::new(ctx, regions);
     link.write_segments(&ef_segments, &mut progress)?;
@@ -356,7 +365,12 @@ fn effective_flash_size(info: &ChipInfo, override_size: Option<FlashSize>, ctx: 
 }
 
 /// Flash an application ELF using the ESP-IDF image format.
-pub fn flash_elf(ctx: &mut JobContext<'_>, backend: &dyn Backend, lease: &Lease, request: &FlashElfRequest) -> Result<FlashResult> {
+pub fn flash_elf(
+    ctx: &mut JobContext<'_>,
+    backend: &dyn Backend,
+    lease: &Lease,
+    request: &FlashElfRequest,
+) -> Result<FlashResult> {
     require_confirmation(request.confirmed)?;
     let start = Instant::now();
     ctx.stage(Stage::Preparing, "Reading firmware");
@@ -415,23 +429,17 @@ pub fn flash_elf(ctx: &mut JobContext<'_>, backend: &dyn Backend, lease: &Lease,
             .cloned()
             .collect::<Vec<_>>();
         if entries.len() != request.erase_partitions.len() {
-            return Err(Error::invalid_input("One or more partitions selected for erasing do not exist in the partition table."));
+            return Err(Error::invalid_input(
+                "One or more partitions selected for erasing do not exist in the partition table.",
+            ));
         }
         erase_entries(ctx, link.as_mut(), &entries)?;
     }
 
     let labels: Vec<String> = prepared.summary.segments.iter().map(|s| s.label.clone()).collect();
     let skipped = write_segments(ctx, link.as_mut(), &prepared.segments, &labels)?;
-    let regions = prepared
-        .segments
-        .iter()
-        .map(|s| FlashRegion::new(s.addr, s.data.len() as u32))
-        .collect::<Vec<_>>();
-    let bytes_written = regions
-        .iter()
-        .filter(|r| !skipped.contains(r))
-        .map(|r| u64::from(r.length))
-        .sum();
+    let regions = prepared.segments.iter().map(|s| FlashRegion::new(s.addr, s.data.len() as u32)).collect::<Vec<_>>();
+    let bytes_written = regions.iter().filter(|r| !skipped.contains(r)).map(|r| u64::from(r.length)).sum();
 
     Ok(FlashResult {
         chip_info: info,
@@ -510,7 +518,12 @@ fn check_binary(ctx: &JobContext<'_>, data: &[u8], offset: u32, chip: Chip, path
 }
 
 /// Write a raw binary to a specific flash offset.
-pub fn write_bin(ctx: &mut JobContext<'_>, backend: &dyn Backend, lease: &Lease, request: &WriteBinRequest) -> Result<FlashResult> {
+pub fn write_bin(
+    ctx: &mut JobContext<'_>,
+    backend: &dyn Backend,
+    lease: &Lease,
+    request: &WriteBinRequest,
+) -> Result<FlashResult> {
     require_confirmation(request.confirmed)?;
     let start = Instant::now();
     let path = Path::new(&request.path);
@@ -562,7 +575,12 @@ pub fn write_bin(ctx: &mut JobContext<'_>, backend: &dyn Backend, lease: &Lease,
 
 /// Read a flash region into a file, finalizing it only after the complete
 /// region was read successfully.
-pub fn read_flash(ctx: &mut JobContext<'_>, backend: &dyn Backend, lease: &Lease, request: &ReadFlashRequest) -> Result<BackupResult> {
+pub fn read_flash(
+    ctx: &mut JobContext<'_>,
+    backend: &dyn Backend,
+    lease: &Lease,
+    request: &ReadFlashRequest,
+) -> Result<BackupResult> {
     let start = Instant::now();
     let output = Path::new(&request.output_path);
     fsutil::validate_output(output)?;
@@ -588,14 +606,15 @@ pub fn read_flash(ctx: &mut JobContext<'_>, backend: &dyn Backend, lease: &Lease
         }
     };
     if info.security.as_ref().is_some_and(|s| s.flash_encryption) {
-        ctx.warn("Flash encryption is enabled. The backup contains encrypted data that is only meaningful on this device.");
+        ctx.warn(
+            "Flash encryption is enabled. The backup contains encrypted data that is only meaningful on this device.",
+        );
     }
 
     let mut file = AtomicFile::create(output)?;
-    let scratch = tempfile::Builder::new()
-        .prefix("oxidizeesp-read-")
-        .tempdir()
-        .map_err(|e| Error::new(ErrorKind::Io, "A temporary folder could not be created.").with_detail(e.to_string()))?;
+    let scratch = tempfile::Builder::new().prefix("oxidizeesp-read-").tempdir().map_err(|e| {
+        Error::new(ErrorKind::Io, "A temporary folder could not be created.").with_detail(e.to_string())
+    })?;
     let chunk_path = scratch.path().join("chunk.bin");
 
     ctx.stage(
@@ -672,10 +691,7 @@ fn read_table(
         )));
     }
     if !data.starts_with(&[0xAA, 0x50]) {
-        return Err(Error::invalid_file(format!(
-            "No partition table was found at {}.",
-            format_address(offset)
-        )));
+        return Err(Error::invalid_file(format!("No partition table was found at {}.", format_address(offset))));
     }
     let (table, format) = partitions::parse(&data)?;
     Ok(partitions::view(&table, format, flash_size, offset))
@@ -710,7 +726,13 @@ fn erase_regions(ctx: &mut JobContext<'_>, link: &mut dyn FlashLink, regions: &[
             ctx.mark_flash_touched();
             link.erase_region(chunk.offset, chunk.length)?;
             done += u64::from(chunk.length);
-            ctx.progress(done, total, ProgressUnit::Bytes, done as f64 / total as f64, Some(format_address(chunk.offset)));
+            ctx.progress(
+                done,
+                total,
+                ProgressUnit::Bytes,
+                done as f64 / total as f64,
+                Some(format_address(chunk.offset)),
+            );
         }
     }
     Ok(())
@@ -727,7 +749,12 @@ fn erase_entries(ctx: &mut JobContext<'_>, link: &mut dyn FlashLink, entries: &[
 }
 
 /// Erase the whole chip, a region, or named partitions.
-pub fn erase(ctx: &mut JobContext<'_>, backend: &dyn Backend, lease: &Lease, request: &EraseRequest) -> Result<EraseResult> {
+pub fn erase(
+    ctx: &mut JobContext<'_>,
+    backend: &dyn Backend,
+    lease: &Lease,
+    request: &EraseRequest,
+) -> Result<EraseResult> {
     require_confirmation(request.confirmed)?;
     if !request.connection.use_stub {
         return Err(Error::unsupported("Erasing requires the RAM flasher stub.")
@@ -789,11 +816,9 @@ pub fn erase(ctx: &mut JobContext<'_>, backend: &dyn Backend, lease: &Lease, req
                     let view = read_table(ctx, link.as_mut(), *offset, flash_size)?;
                     let mut selected = Vec::new();
                     for name in names {
-                        let entry = view
-                            .entries
-                            .iter()
-                            .find(|e| &e.name == name)
-                            .ok_or_else(|| Error::invalid_input(format!("The partition \"{name}\" does not exist on the device.")))?;
+                        let entry = view.entries.iter().find(|e| &e.name == name).ok_or_else(|| {
+                            Error::invalid_input(format!("The partition \"{name}\" does not exist on the device."))
+                        })?;
                         selected.push(entry.clone());
                     }
                     selected
@@ -812,11 +837,14 @@ pub fn erase(ctx: &mut JobContext<'_>, backend: &dyn Backend, lease: &Lease, req
 }
 
 /// Calculate the device-side MD5 checksum of a flash region.
-pub fn checksum(ctx: &mut JobContext<'_>, backend: &dyn Backend, lease: &Lease, request: &ChecksumRequest) -> Result<ChecksumResult> {
+pub fn checksum(
+    ctx: &mut JobContext<'_>,
+    backend: &dyn Backend,
+    lease: &Lease,
+    request: &ChecksumRequest,
+) -> Result<ChecksumResult> {
     let start = Instant::now();
-    request
-        .region
-        .validate(Alignment::None, lease.known_info().and_then(ChipInfo::flash_size_bytes))?;
+    request.region.validate(Alignment::None, lease.known_info().and_then(ChipInfo::flash_size_bytes))?;
     let (mut link, info) = connect(ctx, backend, lease, &request.connection, WriteBehavior::default())?;
     request.region.validate(Alignment::None, info.flash_size_bytes())?;
     ctx.stage(
@@ -829,9 +857,5 @@ pub fn checksum(ctx: &mut JobContext<'_>, backend: &dyn Backend, lease: &Lease, 
     );
     let digest = link.checksum_md5(request.region.offset, request.region.length)?;
     finish_with_reset(ctx, link.as_mut(), &request.connection)?;
-    Ok(ChecksumResult {
-        region: request.region,
-        md5: format!("{digest:032x}"),
-        duration_ms: elapsed_ms(start),
-    })
+    Ok(ChecksumResult { region: request.region, md5: format!("{digest:032x}"), duration_ms: elapsed_ms(start) })
 }

@@ -97,40 +97,18 @@ pub struct BackupVerification {
 
 pub fn verify(backup: &Path) -> Result<BackupVerification> {
     fsutil::require_absolute(backup)?;
-    let size = std::fs::metadata(backup)
-        .map_err(|e| Error::file_io(&e, backup, "open"))?
-        .len();
+    let size = std::fs::metadata(backup).map_err(|e| Error::file_io(&e, backup, "open"))?.len();
     let actual = fsutil::sha256_file(backup)?;
     let metadata = read_sidecar(backup)?;
-    let matches = metadata
-        .as_ref()
-        .map(|m| m.sha256.eq_ignore_ascii_case(&actual) && u64::from(m.length) == size);
-    Ok(BackupVerification {
-        metadata,
-        actual_sha256: actual,
-        actual_size: size,
-        matches,
-    })
+    let matches = metadata.as_ref().map(|m| m.sha256.eq_ignore_ascii_case(&actual) && u64::from(m.length) == size);
+    Ok(BackupVerification { metadata, actual_sha256: actual, actual_size: size, matches })
 }
 
 /// Suggested file name for a backup, without directory.
 pub fn suggested_file_name(chip: Chip, mac: Option<&str>, offset: u32, length: u32, timestamp: &str) -> String {
-    let device = mac
-        .map(|m| m.replace(':', "").to_ascii_lowercase())
-        .unwrap_or_else(|| "device".to_owned());
-    let stamp: String = timestamp
-        .chars()
-        .filter(|c| c.is_ascii_digit())
-        .take(14)
-        .collect();
-    format!(
-        "{}-{}-{:#x}-{:#x}-{}.bin",
-        chip.to_espflash(),
-        device,
-        offset,
-        length,
-        stamp
-    )
+    let device = mac.map(|m| m.replace(':', "").to_ascii_lowercase()).unwrap_or_else(|| "device".to_owned());
+    let stamp: String = timestamp.chars().filter(|c| c.is_ascii_digit()).take(14).collect();
+    format!("{}-{}-{:#x}-{:#x}-{}.bin", chip.to_espflash(), device, offset, length, stamp)
 }
 
 #[cfg(test)]

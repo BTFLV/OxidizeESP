@@ -12,8 +12,7 @@ use std::{
 };
 
 use crate::{
-    Error, ErrorKind, Result,
-    fsutil,
+    Error, ErrorKind, Result, fsutil,
     hardware::Backend,
     job::{self, CancelToken, EventSink, JobContext, JobEvent, JobState, OperationKind},
     monitor::{self, MonitorCommand, MonitorConfig, MonitorRequest, MonitorSink, SymbolResolver},
@@ -37,10 +36,7 @@ struct MonitorHandle {
 /// Whether an operation can be stopped between steps without leaving the
 /// device in an undefined state beyond what the user already accepted.
 pub fn is_cancellable(kind: OperationKind) -> bool {
-    matches!(
-        kind,
-        OperationKind::ReadFlash | OperationKind::EraseRegion | OperationKind::ErasePartitions
-    )
+    matches!(kind, OperationKind::ReadFlash | OperationKind::EraseRegion | OperationKind::ErasePartitions)
 }
 
 pub struct Services {
@@ -89,22 +85,16 @@ impl Services {
     /// communicating with the device.
     pub fn open_device(&self, port_name: &str) -> Result<DeviceSnapshot> {
         let ports = self.list_ports()?;
-        let port = ports
-            .into_iter()
-            .find(|p| p.name == port_name)
-            .ok_or_else(|| {
-                Error::new(ErrorKind::Disconnected, format!("Serial port {port_name} was not found."))
-                    .with_hint("Refresh the port list and check the USB connection.")
-            })?;
+        let port = ports.into_iter().find(|p| p.name == port_name).ok_or_else(|| {
+            Error::new(ErrorKind::Disconnected, format!("Serial port {port_name} was not found."))
+                .with_hint("Refresh the port list and check the USB connection.")
+        })?;
         Ok(self.devices.open(port))
     }
 
     /// Close a device session, stopping its serial monitor first.
     pub fn close_device(&self, device_id: &str) -> Result<()> {
-        let monitor_id = lock(&self.monitors)
-            .iter()
-            .find(|(_, m)| m.device_id == device_id)
-            .map(|(id, _)| id.clone());
+        let monitor_id = lock(&self.monitors).iter().find(|(_, m)| m.device_id == device_id).map(|(id, _)| id.clone());
         if let Some(id) = monitor_id {
             self.stop_monitor(&id)?;
         }
@@ -125,15 +115,11 @@ impl Services {
         success_message: impl FnOnce(&T) -> String,
     ) -> Result<T> {
         let job_id = uuid::Uuid::new_v4().to_string();
-        let lease = self
-            .devices
-            .acquire(device_id, Activity::Operation { job_id: job_id.clone(), kind })?;
+        let lease = self.devices.acquire(device_id, Activity::Operation { job_id: job_id.clone(), kind })?;
         let cancel = CancelToken::new();
         let cancellable = is_cancellable(kind);
-        lock(&self.jobs).insert(
-            job_id.clone(),
-            JobEntry { cancel: cancel.clone(), cancellable, state: JobState::Running },
-        );
+        lock(&self.jobs)
+            .insert(job_id.clone(), JobEntry { cancel: cancel.clone(), cancellable, state: JobState::Running });
         sink.emit(JobEvent::Started { job_id: job_id.clone(), kind, cancellable });
 
         let mut ctx = JobContext::new(sink, cancel);
@@ -162,13 +148,9 @@ impl Services {
     /// Request cancellation of a running job.
     pub fn cancel_job(&self, job_id: &str) -> Result<()> {
         let mut jobs = lock(&self.jobs);
-        let entry = jobs
-            .get_mut(job_id)
-            .ok_or_else(|| Error::invalid_input("The operation has already finished."))?;
+        let entry = jobs.get_mut(job_id).ok_or_else(|| Error::invalid_input("The operation has already finished."))?;
         if !entry.cancellable {
-            return Err(Error::unsupported(
-                "This operation cannot be interrupted safely and will run to completion.",
-            ));
+            return Err(Error::unsupported("This operation cannot be interrupted safely and will run to completion."));
         }
         if entry.state == JobState::Running {
             entry.state = entry.state.transition(JobState::Cancelling)?;
@@ -195,9 +177,8 @@ impl Services {
         }
 
         let monitor_id = uuid::Uuid::new_v4().to_string();
-        let lease = self
-            .devices
-            .acquire(&request.device_id, Activity::Monitoring { monitor_id: monitor_id.clone() })?;
+        let lease =
+            self.devices.acquire(&request.device_id, Activity::Monitoring { monitor_id: monitor_id.clone() })?;
         let link = match self.backend.open_serial(lease.port(), request.baud) {
             Ok(link) => link,
             Err(err) => {
@@ -244,13 +225,9 @@ impl Services {
 
     pub fn monitor_command(&self, monitor_id: &str, command: MonitorCommand) -> Result<()> {
         let monitors = lock(&self.monitors);
-        let handle = monitors
-            .get(monitor_id)
-            .ok_or_else(|| Error::invalid_input("The serial monitor is not running."))?;
-        handle
-            .commands
-            .send(command)
-            .map_err(|_| Error::invalid_input("The serial monitor is not running."))
+        let handle =
+            monitors.get(monitor_id).ok_or_else(|| Error::invalid_input("The serial monitor is not running."))?;
+        handle.commands.send(command).map_err(|_| Error::invalid_input("The serial monitor is not running."))
     }
 
     /// Stop a monitor and wait until its port has been closed.
@@ -259,19 +236,14 @@ impl Services {
         let Some(mut handle) = handle else { return Ok(()) };
         let _ = handle.commands.send(MonitorCommand::Stop);
         if let Some(thread) = handle.thread.take() {
-            thread
-                .join()
-                .map_err(|_| Error::internal("The serial monitor terminated unexpectedly."))?;
+            thread.join().map_err(|_| Error::internal("The serial monitor terminated unexpectedly."))?;
         }
         Ok(())
     }
 
     /// Monitor ID running on a device, if any.
     pub fn monitor_for_device(&self, device_id: &str) -> Option<String> {
-        lock(&self.monitors)
-            .iter()
-            .find(|(_, m)| m.device_id == device_id)
-            .map(|(id, _)| id.clone())
+        lock(&self.monitors).iter().find(|(_, m)| m.device_id == device_id).map(|(id, _)| id.clone())
     }
 
     /// Stop all monitors. Called when the application exits.

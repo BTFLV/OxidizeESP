@@ -20,10 +20,7 @@ pub const MAX_INPUT_FILE_SIZE: u64 = 256 * 1024 * 1024;
 pub fn read_input(path: &Path, max_size: u64) -> Result<Vec<u8>> {
     let metadata = fs::metadata(path).map_err(|e| Error::file_io(&e, path, "open"))?;
     if !metadata.is_file() {
-        return Err(Error::invalid_file(format!(
-            "\"{}\" is not a regular file.",
-            crate::error::display_name(path)
-        )));
+        return Err(Error::invalid_file(format!("\"{}\" is not a regular file.", crate::error::display_name(path))));
     }
     if metadata.len() == 0 {
         return Err(Error::invalid_file(format!("\"{}\" is empty.", crate::error::display_name(path))));
@@ -39,11 +36,7 @@ pub fn read_input(path: &Path, max_size: u64) -> Result<Vec<u8>> {
 }
 
 pub fn require_absolute(path: &Path) -> Result<()> {
-    if path.is_absolute() {
-        Ok(())
-    } else {
-        Err(Error::invalid_input("File paths must be absolute."))
-    }
+    if path.is_absolute() { Ok(()) } else { Err(Error::invalid_input("File paths must be absolute.")) }
 }
 
 /// Check that a file can be created at `path` without overwriting a
@@ -53,9 +46,7 @@ pub fn validate_output(path: &Path) -> Result<()> {
     if path.is_dir() {
         return Err(Error::invalid_input("The output path refers to a folder, not a file."));
     }
-    let parent = path
-        .parent()
-        .ok_or_else(|| Error::invalid_input("The output path has no parent folder."))?;
+    let parent = path.parent().ok_or_else(|| Error::invalid_input("The output path has no parent folder."))?;
     if !parent.is_dir() {
         return Err(Error::invalid_input(format!(
             "The output folder \"{}\" does not exist.",
@@ -85,18 +76,11 @@ impl AtomicFile {
             .suffix(".partial")
             .tempfile_in(parent)
             .map_err(|e| Error::file_io(&e, dest, "create"))?;
-        Ok(Self {
-            temp,
-            dest: dest.to_path_buf(),
-            hasher: Sha256::new(),
-            written: 0,
-        })
+        Ok(Self { temp, dest: dest.to_path_buf(), hasher: Sha256::new(), written: 0 })
     }
 
     pub fn write(&mut self, data: &[u8]) -> Result<()> {
-        self.temp
-            .write_all(data)
-            .map_err(|e| Error::file_io(&e, &self.dest, "write"))?;
+        self.temp.write_all(data).map_err(|e| Error::file_io(&e, &self.dest, "write"))?;
         self.hasher.update(data);
         self.written += data.len() as u64;
         Ok(())
@@ -111,14 +95,9 @@ impl AtomicFile {
     pub fn commit(mut self) -> Result<String> {
         let dest = self.dest.clone();
         self.temp.flush().map_err(|e| Error::file_io(&e, &dest, "write"))?;
-        self.temp
-            .as_file()
-            .sync_all()
-            .map_err(|e| Error::file_io(&e, &dest, "write"))?;
+        self.temp.as_file().sync_all().map_err(|e| Error::file_io(&e, &dest, "write"))?;
         let digest = hex(&self.hasher.finalize());
-        self.temp
-            .persist(&dest)
-            .map_err(|e| Error::file_io(&e.error, &dest, "save"))?;
+        self.temp.persist(&dest).map_err(|e| Error::file_io(&e.error, &dest, "save"))?;
         Ok(digest)
     }
 }

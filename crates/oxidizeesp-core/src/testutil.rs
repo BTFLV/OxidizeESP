@@ -1,8 +1,7 @@
 //! Test helpers.
 
 use object::{
-    Endianness,
-    elf,
+    Endianness, elf,
     write::elf::{FileHeader, ProgramHeader, SectionHeader, Writer},
 };
 

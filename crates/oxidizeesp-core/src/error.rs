@@ -68,12 +68,7 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 impl Error {
     pub fn new(kind: ErrorKind, message: impl Into<String>) -> Self {
-        Self {
-            kind,
-            message: message.into(),
-            hint: None,
-            detail: None,
-        }
+        Self { kind, message: message.into(), hint: None, detail: None }
     }
 
     pub fn with_hint(mut self, hint: impl Into<String>) -> Self {
@@ -110,21 +105,17 @@ impl Error {
     pub fn file_io(err: &io::Error, path: &Path, action: &str) -> Self {
         let name = display_name(path);
         let (kind, message, hint) = match err.kind() {
-            io::ErrorKind::NotFound => (
-                ErrorKind::InvalidFile,
-                format!("Could not {action} \"{name}\": the file does not exist."),
-                None,
-            ),
+            io::ErrorKind::NotFound => {
+                (ErrorKind::InvalidFile, format!("Could not {action} \"{name}\": the file does not exist."), None)
+            }
             io::ErrorKind::PermissionDenied => (
                 ErrorKind::Permission,
                 format!("Could not {action} \"{name}\": permission denied."),
                 Some("Choose a location you have access to."),
             ),
-            io::ErrorKind::StorageFull => (
-                ErrorKind::Io,
-                format!("Could not {action} \"{name}\": the disk is full."),
-                None,
-            ),
+            io::ErrorKind::StorageFull => {
+                (ErrorKind::Io, format!("Could not {action} \"{name}\": the disk is full."), None)
+            }
             _ => (ErrorKind::Io, format!("Could not {action} \"{name}\"."), None),
         };
         let mut error = Self::new(kind, message).with_detail(err.to_string());
@@ -147,8 +138,7 @@ impl Error {
                 if looks_busy(&detail) {
                     busy_port_error(port, detail)
                 } else {
-                    Self::new(ErrorKind::Connection, format!("Could not open serial port {port}."))
-                        .with_detail(detail)
+                    Self::new(ErrorKind::Connection, format!("Could not open serial port {port}.")).with_detail(detail)
                 }
             }
         }
@@ -157,11 +147,9 @@ impl Error {
 
 fn io_kind_to_serial_error(kind: io::ErrorKind, port: &str, detail: String) -> Error {
     match kind {
-        io::ErrorKind::NotFound => {
-            Error::new(ErrorKind::Disconnected, format!("Serial port {port} was not found."))
-                .with_hint("The device may have been unplugged. Refresh the port list.")
-                .with_detail(detail)
-        }
+        io::ErrorKind::NotFound => Error::new(ErrorKind::Disconnected, format!("Serial port {port} was not found."))
+            .with_hint("The device may have been unplugged. Refresh the port list.")
+            .with_detail(detail),
         io::ErrorKind::PermissionDenied => permission_error(port, detail),
         io::ErrorKind::ResourceBusy => busy_port_error(port, detail),
         io::ErrorKind::BrokenPipe | io::ErrorKind::NotConnected | io::ErrorKind::UnexpectedEof => {
@@ -171,8 +159,7 @@ fn io_kind_to_serial_error(kind: io::ErrorKind, port: &str, detail: String) -> E
         }
         _ if looks_busy(&detail) => busy_port_error(port, detail),
         _ if looks_permission(&detail) => permission_error(port, detail),
-        _ => Error::new(ErrorKind::Connection, format!("Communication with {port} failed."))
-            .with_detail(detail),
+        _ => Error::new(ErrorKind::Connection, format!("Communication with {port} failed.")).with_detail(detail),
     }
 }
 
@@ -206,9 +193,7 @@ fn looks_permission(detail: &str) -> bool {
 /// File name used in user-facing messages. Full paths are avoided so that
 /// messages and logs do not expose local directory structures unnecessarily.
 pub fn display_name(path: &Path) -> String {
-    path.file_name()
-        .map(|n| n.to_string_lossy().into_owned())
-        .unwrap_or_else(|| path.display().to_string())
+    path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| path.display().to_string())
 }
 
 /// Flatten an error and its sources into a single diagnostic string.
@@ -381,10 +366,13 @@ impl From<esp_idf_part::Error> for Error {
             P::OverlappingPartitions(a, b) => format!("Partitions \"{a}\" and \"{b}\" overlap."),
             P::DuplicatePartitions(name) => format!("The partition name \"{name}\" is used more than once."),
             P::UnalignedPartition => {
-                "A partition is not correctly aligned (app partitions require 64 KiB, data partitions 4 KiB).".to_owned()
+                "A partition is not correctly aligned (app partitions require 64 KiB, data partitions 4 KiB)."
+                    .to_owned()
             }
             P::NoAppPartition => "The partition table does not contain an app partition.".to_owned(),
-            P::MultipleFactoryPartitions => "The partition table contains more than one factory app partition.".to_owned(),
+            P::MultipleFactoryPartitions => {
+                "The partition table contains more than one factory app partition.".to_owned()
+            }
             P::MultipleOtadataPartitions => "The partition table contains more than one otadata partition.".to_owned(),
             P::InvalidOtadataPartitionSize => "The otadata partition must be exactly 8 KiB.".to_owned(),
             P::PartitionTooLarge(name) => format!("App partition \"{name}\" exceeds the 16 MiB limit."),
@@ -426,10 +414,8 @@ mod tests {
         let busy = serialport::Error::new(serialport::ErrorKind::Io(io::ErrorKind::Other), "Resource busy");
         assert_eq!(Error::serial(&busy, "/dev/cu.usbserial").kind, ErrorKind::PortBusy);
 
-        let denied = serialport::Error::new(
-            serialport::ErrorKind::Io(io::ErrorKind::PermissionDenied),
-            "Permission denied",
-        );
+        let denied =
+            serialport::Error::new(serialport::ErrorKind::Io(io::ErrorKind::PermissionDenied), "Permission denied");
         assert_eq!(Error::serial(&denied, "/dev/ttyUSB0").kind, ErrorKind::Permission);
     }
 

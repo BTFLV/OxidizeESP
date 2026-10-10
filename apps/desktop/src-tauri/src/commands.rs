@@ -131,7 +131,11 @@ pub async fn probe_device(
 }
 
 #[tauri::command]
-pub async fn reset_device(services: State<'_, AppServices>, device_id: String, on_event: Channel<JobEvent>) -> Result<()> {
+pub async fn reset_device(
+    services: State<'_, AppServices>,
+    device_id: String,
+    on_event: Channel<JobEvent>,
+) -> Result<()> {
     let services = services.inner().clone();
     blocking(move || {
         let sink = channel_sink(on_event);
@@ -182,11 +186,7 @@ pub async fn flash_elf(
             &sink,
             |ctx, backend, lease| ops::flash_elf(ctx, backend, lease, &request),
             |r| {
-                if r.verified {
-                    "Application flashed and verified".into()
-                } else {
-                    "Application flashed".into()
-                }
+                if r.verified { "Application flashed and verified".into() } else { "Application flashed".into() }
             },
         )
     })
@@ -261,7 +261,11 @@ pub async fn read_partition_table(
 }
 
 #[tauri::command]
-pub async fn erase(services: State<'_, AppServices>, request: EraseRequest, on_event: Channel<JobEvent>) -> Result<EraseResult> {
+pub async fn erase(
+    services: State<'_, AppServices>,
+    request: EraseRequest,
+    on_event: Channel<JobEvent>,
+) -> Result<EraseResult> {
     let services = services.inner().clone();
     let kind = match request.target {
         EraseTarget::Full => OperationKind::EraseFlash,
@@ -357,11 +361,13 @@ pub async fn verify_backup(path: String) -> Result<BackupVerification> {
 }
 
 #[tauri::command]
-pub fn suggest_backup_name(services: State<'_, AppServices>, device_id: String, region: Option<FlashRegion>) -> Result<String> {
+pub fn suggest_backup_name(
+    services: State<'_, AppServices>,
+    device_id: String,
+    region: Option<FlashRegion>,
+) -> Result<String> {
     let device = services.devices().get(&device_id)?;
-    let info = device
-        .chip_info
-        .ok_or_else(|| Error::invalid_input("Identify the device before creating a backup."))?;
+    let info = device.chip_info.ok_or_else(|| Error::invalid_input("Identify the device before creating a backup."))?;
     let region = region.unwrap_or_else(|| FlashRegion::new(0, info.flash_size_bytes().unwrap_or(0)));
     Ok(backup::suggested_file_name(
         info.chip,
@@ -373,17 +379,16 @@ pub fn suggest_backup_name(services: State<'_, AppServices>, device_id: String, 
 }
 
 #[tauri::command]
-pub async fn load_partition_table(path: String, flash_size: Option<u32>, table_offset: Option<u32>) -> Result<PartitionTableView> {
+pub async fn load_partition_table(
+    path: String,
+    flash_size: Option<u32>,
+    table_offset: Option<u32>,
+) -> Result<PartitionTableView> {
     blocking(move || {
         let path = Path::new(&path);
         fsutil::require_absolute(path)?;
         let (table, format) = partitions::load(path)?;
-        Ok(partitions::view(
-            &table,
-            format,
-            flash_size,
-            table_offset.unwrap_or(partitions::DEFAULT_TABLE_OFFSET),
-        ))
+        Ok(partitions::view(&table, format, flash_size, table_offset.unwrap_or(partitions::DEFAULT_TABLE_OFFSET)))
     })
     .await
 }
@@ -449,7 +454,12 @@ pub async fn start_monitor(
 }
 
 #[tauri::command]
-pub fn monitor_send(services: State<'_, AppServices>, monitor_id: String, text: String, line_ending: LineEnding) -> Result<()> {
+pub fn monitor_send(
+    services: State<'_, AppServices>,
+    monitor_id: String,
+    text: String,
+    line_ending: LineEnding,
+) -> Result<()> {
     let data = monitor::encode_input(&text, line_ending)?;
     services.monitor_command(&monitor_id, MonitorCommand::Send(data))
 }

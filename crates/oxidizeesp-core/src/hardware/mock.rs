@@ -102,10 +102,7 @@ impl MockBackend {
 
     pub fn add(&self, device: SimDevice) -> SharedDevice {
         let shared = Arc::new(Mutex::new(device));
-        self.devices
-            .lock()
-            .unwrap_or_else(|p| p.into_inner())
-            .push(shared.clone());
+        self.devices.lock().unwrap_or_else(|p| p.into_inner()).push(shared.clone());
         shared
     }
 
@@ -345,7 +342,10 @@ impl SerialLink for MockSerial {
         {
             let d = lock(&self.device);
             if !d.plugged_in {
-                return Err(Error::new(ErrorKind::Disconnected, format!("The connection to {} was lost.", d.port.name)));
+                return Err(Error::new(
+                    ErrorKind::Disconnected,
+                    format!("The connection to {} was lost.", d.port.name),
+                ));
             }
         }
         if self.pending.is_empty() {
@@ -359,7 +359,9 @@ impl SerialLink for MockSerial {
             let line = match n {
                 0 => "ESP-ROM:esp32c3-api1-20210207\r\n".to_owned(),
                 1 => "rst:0x1 (POWERON),boot:0xc (SPI_FAST_FLASH_BOOT)\r\n".to_owned(),
-                _ if n.is_multiple_of(20) => format!("\x1b[0;33mW ({}) app: simulated warning, PC=0x42000a10\x1b[0m\r\n", n * 250),
+                _ if n.is_multiple_of(20) => {
+                    format!("\x1b[0;33mW ({}) app: simulated warning, PC=0x42000a10\x1b[0m\r\n", n * 250)
+                }
                 _ => format!("\x1b[0;32mI ({}) app: simulated tick {n}\x1b[0m\r\n", n * 250),
             };
             self.pending.extend_from_slice(line.as_bytes());

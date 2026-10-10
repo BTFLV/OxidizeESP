@@ -160,7 +160,9 @@ impl SymbolResolver {
                 .unwrap_or_else(|| Arc::from(&[][..]));
             Ok(EndianArcSlice::new(bytes, endian))
         })
-        .map_err(|e| Error::invalid_file("The ELF debug information could not be loaded.").with_detail(e.to_string()))?;
+        .map_err(|e| {
+            Error::invalid_file("The ELF debug information could not be loaded.").with_detail(e.to_string())
+        })?;
         let context = Context::from_dwarf(dwarf)
             .map_err(|e| Error::invalid_file("The ELF debug information is invalid.").with_detail(e.to_string()))?;
         let segments = object
@@ -201,12 +203,8 @@ impl SymbolResolver {
                 .find(|(start, end, _)| (*start..*end).contains(&address))
                 .map(|(_, _, name)| name.clone())
         })?;
-        let location = self
-            .context
-            .find_location(address)
-            .ok()
-            .flatten()
-            .and_then(|loc| Some((loc.file?.to_owned(), loc.line?)));
+        let location =
+            self.context.find_location(address).ok().flatten().and_then(|loc| Some((loc.file?.to_owned(), loc.line?)));
         Some(ResolvedAddress { address, function, location })
     }
 
@@ -292,11 +290,20 @@ pub struct MonitorLine {
 #[serde(tag = "event", rename_all = "camelCase", rename_all_fields = "camelCase")]
 #[ts(export)]
 pub enum MonitorEvent {
-    Started { monitor_id: String, port: String, baud: u32, symbols_loaded: bool },
-    Lines { lines: Vec<MonitorLine> },
+    Started {
+        monitor_id: String,
+        port: String,
+        baud: u32,
+        symbols_loaded: bool,
+    },
+    Lines {
+        lines: Vec<MonitorLine>,
+    },
     /// The monitor ended. `error` is set when it ended because of a failure,
     /// for example after the device was unplugged.
-    Stopped { error: Option<Error> },
+    Stopped {
+        error: Option<Error>,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
@@ -354,10 +361,7 @@ impl<F: Fn(MonitorEvent) + Send + Sync> MonitorSink for F {
 }
 
 fn now_ms() -> f64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs_f64() * 1000.0)
-        .unwrap_or(0.0)
+    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs_f64() * 1000.0).unwrap_or(0.0)
 }
 
 /// Batches lines and forwards them to the sink and an optional log file.

@@ -43,13 +43,7 @@ fn usb_port_info(port: &SerialPortDescriptor) -> UsbPortInfo {
             manufacturer: usb.manufacturer.clone(),
             product: usb.product.clone(),
         },
-        None => UsbPortInfo {
-            vid: 0,
-            pid: 0,
-            serial_number: None,
-            manufacturer: None,
-            product: None,
-        },
+        None => UsbPortInfo { vid: 0, pid: 0, serial_number: None, manufacturer: None, product: None },
     }
 }
 
@@ -97,15 +91,13 @@ impl Backend for EspflashBackend {
         .map_err(|e| from_espflash(e, &port.name))?;
 
         let chip = Chip::from_espflash(flasher.chip()).ok_or_else(|| {
-            Error::new(ErrorKind::UnsupportedHardware, "The detected chip is not supported by this version of OxidizeESP.")
+            Error::new(
+                ErrorKind::UnsupportedHardware,
+                "The detected chip is not supported by this version of OxidizeESP.",
+            )
         })?;
 
-        Ok(Box::new(EspflashLink {
-            flasher,
-            chip,
-            port: port.name.clone(),
-            use_stub: options.use_stub,
-        }))
+        Ok(Box::new(EspflashLink { flasher, chip, port: port.name.clone(), use_stub: options.use_stub }))
     }
 
     fn open_serial(&self, port: &SerialPortDescriptor, baud: u32) -> Result<Box<dyn SerialLink>> {
@@ -114,12 +106,7 @@ impl Backend for EspflashBackend {
         // the chip in reset or in download mode while monitoring.
         let _ = serial.write_data_terminal_ready(false);
         let _ = serial.write_request_to_send(false);
-        Ok(Box::new(NativeSerial {
-            port: serial,
-            usb: usb_port_info(port),
-            name: port.name.clone(),
-            baud,
-        }))
+        Ok(Box::new(NativeSerial { port: serial, usb: usb_port_info(port), name: port.name.clone(), baud }))
     }
 }
 
@@ -160,19 +147,14 @@ impl FlashLink for EspflashLink {
     fn chip_info(&mut self) -> Result<ChipInfo> {
         let sdm = self.flasher.secure_download_mode();
         let info = self.flasher.device_info().map_err(|e| self.map(e))?;
-        let security = self
-            .flasher
-            .security_info()
-            .ok()
-            .map(|s| security_state(&s))
-            .or_else(|| {
-                sdm.then_some(SecurityState {
-                    secure_boot: false,
-                    flash_encryption: false,
-                    secure_download_mode: true,
-                    jtag_disabled: false,
-                })
-            });
+        let security = self.flasher.security_info().ok().map(|s| security_state(&s)).or_else(|| {
+            sdm.then_some(SecurityState {
+                secure_boot: false,
+                flash_encryption: false,
+                secure_download_mode: true,
+                jtag_disabled: false,
+            })
+        });
         let revision_number = info.revision.and_then(|(major, minor)| u16::try_from(major * 100 + minor).ok());
         Ok(ChipInfo {
             chip: self.chip,
@@ -194,18 +176,14 @@ impl FlashLink for EspflashLink {
     }
 
     fn write_segments(&mut self, segments: &[Segment<'_>], progress: &mut dyn ProgressCallbacks) -> Result<()> {
-        self.flasher
-            .write_bins_to_flash(segments, progress)
-            .map_err(|e| self.map(e))
+        self.flasher.write_bins_to_flash(segments, progress).map_err(|e| self.map(e))
     }
 
     fn read_flash(&mut self, offset: u32, length: u32, dest: &Path) -> Result<()> {
         let result = if self.use_stub {
-            self.flasher
-                .read_flash(offset, length, READ_BLOCK_SIZE, READ_MAX_IN_FLIGHT, dest.to_path_buf())
+            self.flasher.read_flash(offset, length, READ_BLOCK_SIZE, READ_MAX_IN_FLIGHT, dest.to_path_buf())
         } else {
-            self.flasher
-                .read_flash_rom(offset, length, READ_BLOCK_SIZE, READ_MAX_IN_FLIGHT, dest.to_path_buf())
+            self.flasher.read_flash_rom(offset, length, READ_BLOCK_SIZE, READ_MAX_IN_FLIGHT, dest.to_path_buf())
         };
         result.map_err(|e| self.map(e))
     }
@@ -231,10 +209,7 @@ impl FlashLink for EspflashLink {
     fn reset_after(&mut self) -> Result<()> {
         let chip = self.flasher.chip();
         let use_stub = self.use_stub;
-        self.flasher
-            .connection()
-            .reset_after(use_stub, chip)
-            .map_err(|e| from_espflash(e, &self.port))
+        self.flasher.connection().reset_after(use_stub, chip).map_err(|e| from_espflash(e, &self.port))
     }
 }
 
@@ -264,7 +239,14 @@ impl SerialLink for NativeSerial {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
         match io::Read::read(&mut self.port, buf) {
             Ok(n) => Ok(n),
-            Err(e) if matches!(e.kind(), io::ErrorKind::TimedOut | io::ErrorKind::WouldBlock | io::ErrorKind::Interrupted) => Ok(0),
+            Err(e)
+                if matches!(
+                    e.kind(),
+                    io::ErrorKind::TimedOut | io::ErrorKind::WouldBlock | io::ErrorKind::Interrupted
+                ) =>
+            {
+                Ok(0)
+            }
             Err(e) => Err(serial_io_error(&e, &self.name)),
         }
     }

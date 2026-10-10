@@ -16,12 +16,7 @@ use serde::Serialize;
 use time::OffsetDateTime;
 use ts_rs::TS;
 
-use crate::{
-    Error, ErrorKind, Result,
-    hardware::ChipInfo,
-    job::OperationKind,
-    ports::SerialPortDescriptor,
-};
+use crate::{Error, ErrorKind, Result, hardware::ChipInfo, job::OperationKind, ports::SerialPortDescriptor};
 
 /// What a session is currently doing.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
@@ -187,9 +182,7 @@ impl Drop for Lease {
 }
 
 pub fn now_rfc3339() -> String {
-    OffsetDateTime::now_utc()
-        .format(&time::format_description::well_known::Rfc3339)
-        .unwrap_or_default()
+    OffsetDateTime::now_utc().format(&time::format_description::well_known::Rfc3339).unwrap_or_default()
 }
 
 impl DeviceManager {
@@ -234,12 +227,7 @@ impl DeviceManager {
     }
 
     pub fn get(&self, id: &str) -> Result<DeviceSnapshot> {
-        self.lock()
-            .sessions
-            .iter()
-            .find(|s| s.id == id)
-            .map(Session::snapshot)
-            .ok_or_else(unknown_device)
+        self.lock().sessions.iter().find(|s| s.id == id).map(Session::snapshot).ok_or_else(unknown_device)
     }
 
     /// Open a session for `port`, or return the existing session using it.
@@ -334,9 +322,9 @@ impl DeviceManager {
                     continue;
                 }
                 let renamed = session.port.usb_identity().and_then(|identity| {
-                    ports.iter().find(|p| {
-                        p.usb_identity().as_deref() == Some(identity.as_str()) && !claimed.contains(&p.name)
-                    })
+                    ports
+                        .iter()
+                        .find(|p| p.usb_identity().as_deref() == Some(identity.as_str()) && !claimed.contains(&p.name))
                 });
                 match renamed {
                     Some(port) if session.activity == Activity::Idle => {
@@ -395,10 +383,7 @@ pub fn verify_identity(known: Option<&ChipInfo>, current: &ChipInfo) -> Result<(
     if known.chip != current.chip {
         return Err(Error::new(
             ErrorKind::DeviceMismatch,
-            format!(
-                "A different device is connected: expected {}, found {}.",
-                known.chip_name, current.chip_name
-            ),
+            format!("A different device is connected: expected {}, found {}.", known.chip_name, current.chip_name),
         )
         .with_hint("Reconnect the device to identify it again."));
     }

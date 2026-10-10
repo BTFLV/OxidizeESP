@@ -16,7 +16,10 @@ use crate::{
     job::JobEvent,
     model::{Chip, ConnectionOptions, FlashSize},
     monitor::{MonitorEvent, MonitorRequest},
-    ops::{self, ChecksumRequest, EraseRequest, EraseTarget, FlashElfRequest, PartitionSource, ReadFlashRequest, WriteBinRequest},
+    ops::{
+        self, ChecksumRequest, EraseRequest, EraseTarget, FlashElfRequest, PartitionSource, ReadFlashRequest,
+        WriteBinRequest,
+    },
     region::FlashRegion,
     session::DeviceStatus,
     testutil::synthetic_esp32c3_elf,
@@ -91,11 +94,8 @@ impl Fixture {
     }
 
     fn checksum(&self, region: FlashRegion) -> String {
-        let request = ChecksumRequest {
-            device_id: self.device_id.clone(),
-            region,
-            connection: ConnectionOptions::default(),
-        };
+        let request =
+            ChecksumRequest { device_id: self.device_id.clone(), region, connection: ConnectionOptions::default() };
         let events = Events::default();
         self.services
             .run_job(
@@ -159,9 +159,13 @@ fn job_emits_started_progress_and_completion() {
     let events = Events::default();
     let result = f
         .services
-        .run_job(&f.device_id, OperationKind::WriteBin, &events, |ctx, b, l| ops::write_bin(ctx, b, l, &request), |_| {
-            "Done".into()
-        })
+        .run_job(
+            &f.device_id,
+            OperationKind::WriteBin,
+            &events,
+            |ctx, b, l| ops::write_bin(ctx, b, l, &request),
+            |_| "Done".into(),
+        )
         .unwrap();
     assert!(result.verified);
     assert_eq!(result.bytes_written, data.len() as u64);
@@ -205,9 +209,13 @@ fn backup_roundtrip_matches_device_checksum() {
     let events = Events::default();
     let result = f
         .services
-        .run_job(&f.device_id, OperationKind::ReadFlash, &events, |ctx, b, l| ops::read_flash(ctx, b, l, &request), |_| {
-            "ok".into()
-        })
+        .run_job(
+            &f.device_id,
+            OperationKind::ReadFlash,
+            &events,
+            |ctx, b, l| ops::read_flash(ctx, b, l, &request),
+            |_| "ok".into(),
+        )
         .unwrap();
     assert_eq!(std::fs::read(&out).unwrap(), data);
     assert_eq!(result.metadata.sha256, crate::fsutil::sha256_hex(&data));
@@ -247,9 +255,13 @@ fn full_backup_uses_detected_flash_size() {
     let events = Events::default();
     let result = f
         .services
-        .run_job(&f.device_id, OperationKind::ReadFlash, &events, |ctx, b, l| ops::read_flash(ctx, b, l, &request), |_| {
-            "ok".into()
-        })
+        .run_job(
+            &f.device_id,
+            OperationKind::ReadFlash,
+            &events,
+            |ctx, b, l| ops::read_flash(ctx, b, l, &request),
+            |_| "ok".into(),
+        )
         .unwrap();
     assert!(result.metadata.full_flash);
     assert_eq!(std::fs::metadata(&out).unwrap().len(), 4 * 1024 * 1024);
@@ -285,10 +297,7 @@ fn cancelled_backup_leaves_no_file() {
     assert!(!out.exists());
     assert_eq!(std::fs::read_dir(f.dir.path()).unwrap().count(), 0, "no temporary files may remain");
     let events = events.take();
-    assert!(matches!(
-        events.last(),
-        Some(JobEvent::Cancelled { flash_may_be_inconsistent: false, .. })
-    ));
+    assert!(matches!(events.last(), Some(JobEvent::Cancelled { flash_may_be_inconsistent: false, .. })));
 }
 
 #[test]
@@ -302,7 +311,9 @@ fn non_cancellable_jobs_reject_cancellation() {
             OperationKind::FlashElf,
             &events,
             |_, _, l| {
-                if let Ok(Activity::Operation { job_id, .. }) = services.devices().get(l.device_id()).map(|s| s.activity) {
+                if let Ok(Activity::Operation { job_id, .. }) =
+                    services.devices().get(l.device_id()).map(|s| s.activity)
+                {
                     let err = services.cancel_job(&job_id).unwrap_err();
                     assert_eq!(err.kind, ErrorKind::Unsupported);
                 }
@@ -356,7 +367,9 @@ fn erase_region_and_partitions() {
 fn erase_partitions_from_device_table() {
     let f = fixture();
     f.probe();
-    let (table, _) = crate::partitions::parse(b"nvs, data, nvs, 0x9000, 0x6000,\nfactory, app, factory, 0x10000, 0x100000,\n").unwrap();
+    let (table, _) =
+        crate::partitions::parse(b"nvs, data, nvs, 0x9000, 0x6000,\nfactory, app, factory, 0x10000, 0x100000,\n")
+            .unwrap();
     let bin = crate::partitions::to_binary(&table).unwrap();
     {
         let mut d = f.device.lock().unwrap();
@@ -375,7 +388,10 @@ fn erase_partitions_from_device_table() {
 
     let err = f
         .erase(
-            EraseTarget::Partitions { names: vec!["missing".into()], source: PartitionSource::Device { offset: 0x8000 } },
+            EraseTarget::Partitions {
+                names: vec!["missing".into()],
+                source: PartitionSource::Device { offset: 0x8000 },
+            },
             true,
         )
         .unwrap_err();
@@ -441,9 +457,13 @@ fn flash_elf_writes_bootloader_partition_table_and_app() {
     let events = Events::default();
     let result = f
         .services
-        .run_job(&f.device_id, OperationKind::FlashElf, &events, |ctx, b, l| ops::flash_elf(ctx, b, l, &request), |_| {
-            "ok".into()
-        })
+        .run_job(
+            &f.device_id,
+            OperationKind::FlashElf,
+            &events,
+            |ctx, b, l| ops::flash_elf(ctx, b, l, &request),
+            |_| "ok".into(),
+        )
         .unwrap();
     let summary = result.image.unwrap();
     let offsets: Vec<u32> = summary.segments.iter().map(|s| s.offset).collect();
@@ -472,16 +492,17 @@ fn flash_elf_requires_app_descriptor_when_checked() {
     let events = Events::default();
     let err = f
         .services
-        .run_job(&f.device_id, OperationKind::FlashElf, &events, |ctx, b, l| ops::flash_elf(ctx, b, l, &request), |_| {
-            "ok".into()
-        })
+        .run_job(
+            &f.device_id,
+            OperationKind::FlashElf,
+            &events,
+            |ctx, b, l| ops::flash_elf(ctx, b, l, &request),
+            |_| "ok".into(),
+        )
         .unwrap_err();
     assert_eq!(err.kind, ErrorKind::InvalidFile);
     assert!(f.device.lock().unwrap().flash.iter().all(|b| *b == 0xFF), "nothing may be written");
-    assert!(matches!(
-        events.take().last(),
-        Some(JobEvent::Failed { flash_may_be_inconsistent: false, .. })
-    ));
+    assert!(matches!(events.take().last(), Some(JobEvent::Failed { flash_may_be_inconsistent: false, .. })));
 }
 
 #[test]
@@ -573,8 +594,7 @@ fn unplugging_during_monitor_marks_device_disconnected() {
 #[test]
 fn connection_failures_are_recorded_on_the_session() {
     let f = fixture();
-    f.device.lock().unwrap().fail_connect =
-        Some(Error::new(ErrorKind::Connection, "No bootloader response"));
+    f.device.lock().unwrap().fail_connect = Some(Error::new(ErrorKind::Connection, "No bootloader response"));
     let events = Events::default();
     let err = f
         .services

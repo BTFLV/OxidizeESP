@@ -116,13 +116,7 @@ pub fn describe(info: &SerialPortInfo) -> SerialPortDescriptor {
         Some(_) if bridge.is_some() => PortHint::UsbUartBridge,
         _ => PortHint::Other,
     };
-    SerialPortDescriptor {
-        name: info.port_name.clone(),
-        kind,
-        usb,
-        hint,
-        bridge: bridge.map(str::to_owned),
-    }
+    SerialPortDescriptor { name: info.port_name.clone(), kind, usb, hint, bridge: bridge.map(str::to_owned) }
 }
 
 /// Normalise and sort an enumerated port list.
@@ -136,11 +130,7 @@ pub fn normalize(ports: Vec<SerialPortDescriptor>) -> Vec<SerialPortDescriptor> 
         .filter(|p| !p.name.starts_with("/dev/tty."))
         .filter(|p| p.kind != PortKind::Bluetooth)
         .collect();
-    ports.sort_by(|a, b| {
-        rank(a.hint)
-            .cmp(&rank(b.hint))
-            .then_with(|| natural_key(&a.name).cmp(&natural_key(&b.name)))
-    });
+    ports.sort_by(|a, b| rank(a.hint).cmp(&rank(b.hint)).then_with(|| natural_key(&a.name).cmp(&natural_key(&b.name))));
     ports.dedup_by(|a, b| a.name == b.name);
     ports
 }
@@ -155,14 +145,8 @@ fn rank(hint: PortHint) -> u8 {
 
 /// Sort `COM10` after `COM9`.
 fn natural_key(name: &str) -> (String, u64) {
-    let digits: String = name
-        .chars()
-        .rev()
-        .take_while(char::is_ascii_digit)
-        .collect::<Vec<_>>()
-        .into_iter()
-        .rev()
-        .collect();
+    let digits: String =
+        name.chars().rev().take_while(char::is_ascii_digit).collect::<Vec<_>>().into_iter().rev().collect();
     let prefix = name[..name.len() - digits.len()].to_ascii_lowercase();
     (prefix, digits.parse().unwrap_or(0))
 }
@@ -218,17 +202,11 @@ mod tests {
                 port_name: "/dev/cu.Bluetooth-Incoming-Port".into(),
                 port_type: SerialPortType::BluetoothPort,
             }),
-            describe(&SerialPortInfo {
-                port_name: "/dev/cu.debug-console".into(),
-                port_type: SerialPortType::Unknown,
-            }),
+            describe(&SerialPortInfo { port_name: "/dev/cu.debug-console".into(), port_type: SerialPortType::Unknown }),
             describe(&usb("/dev/cu.usbmodem2", ESPRESSIF_VID, USB_SERIAL_JTAG_PID, None)),
         ];
         let names: Vec<_> = normalize(ports).into_iter().map(|p| p.name).collect();
-        assert_eq!(
-            names,
-            vec!["/dev/cu.usbmodem2", "/dev/cu.usbserial-1", "/dev/cu.debug-console"]
-        );
+        assert_eq!(names, vec!["/dev/cu.usbmodem2", "/dev/cu.usbserial-1", "/dev/cu.debug-console"]);
     }
 
     #[test]

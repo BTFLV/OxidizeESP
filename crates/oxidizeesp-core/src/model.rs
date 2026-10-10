@@ -72,14 +72,9 @@ impl Chip {
     /// Parse the lower-case identifier used by espflash and ESP-IDF metadata
     /// (for example `esp32c3`).
     pub fn parse(name: &str) -> Option<Self> {
-        let normalized: String = name
-            .chars()
-            .filter(|c| *c != '-' && *c != '_')
-            .collect::<String>()
-            .to_ascii_lowercase();
-        Chip::ALL
-            .into_iter()
-            .find(|c| c.to_espflash().to_string() == normalized)
+        let normalized: String =
+            name.chars().filter(|c| *c != '-' && *c != '_').collect::<String>().to_ascii_lowercase();
+        Chip::ALL.into_iter().find(|c| c.to_espflash().to_string() == normalized)
     }
 
     pub fn display_name(self) -> &'static str {
@@ -125,10 +120,8 @@ impl ChipDescriptor {
     pub fn for_chip(chip: Chip) -> Self {
         let ef = chip.to_espflash();
         let encodings = ef.flash_frequency_encodings();
-        let supported_flash_frequencies = FlashFrequency::ALL
-            .into_iter()
-            .filter(|f| encodings.contains_key(&f.to_espflash()))
-            .collect();
+        let supported_flash_frequencies =
+            FlashFrequency::ALL.into_iter().filter(|f| encodings.contains_key(&f.to_espflash())).collect();
         let supported_xtal_frequencies = match chip {
             Chip::Esp32 | Chip::Esp32c2 => vec![XtalFreq::Mhz26, XtalFreq::Mhz40],
             Chip::Esp32c5 => vec![XtalFreq::Mhz40, XtalFreq::Mhz48],

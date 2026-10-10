@@ -232,13 +232,7 @@ pub struct JobContext<'a> {
 
 impl<'a> JobContext<'a> {
     pub fn new(sink: &'a dyn EventSink, cancel: CancelToken) -> Self {
-        Self {
-            sink,
-            cancel,
-            last_progress: None,
-            min_interval: Duration::from_millis(50),
-            flash_touched: false,
-        }
+        Self { sink, cancel, last_progress: None, min_interval: Duration::from_millis(50), flash_touched: false }
     }
 
     pub fn cancel_token(&self) -> &CancelToken {
@@ -281,13 +275,7 @@ impl<'a> JobContext<'a> {
             return;
         }
         self.last_progress = Some(now);
-        self.sink.emit(JobEvent::Progress {
-            current,
-            total,
-            unit,
-            overall: overall.clamp(0.0, 1.0),
-            detail,
-        });
+        self.sink.emit(JobEvent::Progress { current, total, unit, overall: overall.clamp(0.0, 1.0), detail });
     }
 
     pub(crate) fn emit(&self, event: JobEvent) {
@@ -307,10 +295,7 @@ pub fn finish<T>(ctx: &JobContext<'_>, result: &Result<T>, success_message: impl
             },
             flash_may_be_inconsistent: ctx.flash_touched(),
         }),
-        Err(err) => ctx.emit(JobEvent::Failed {
-            error: err.clone(),
-            flash_may_be_inconsistent: ctx.flash_touched(),
-        }),
+        Err(err) => ctx.emit(JobEvent::Failed { error: err.clone(), flash_may_be_inconsistent: ctx.flash_touched() }),
     }
 }
 
@@ -378,10 +363,7 @@ mod tests {
         ctx.mark_flash_touched();
         finish::<()>(&ctx, &Err(Error::cancelled()), |_| String::new());
         let events = sink.0.lock().unwrap();
-        assert!(matches!(
-            events.last(),
-            Some(JobEvent::Cancelled { flash_may_be_inconsistent: true, .. })
-        ));
+        assert!(matches!(events.last(), Some(JobEvent::Cancelled { flash_may_be_inconsistent: true, .. })));
     }
 
     #[test]
