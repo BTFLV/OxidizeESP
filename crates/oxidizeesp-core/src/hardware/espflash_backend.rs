@@ -103,9 +103,11 @@ impl Backend for EspflashBackend {
     fn open_serial(&self, port: &SerialPortDescriptor, baud: u32) -> Result<Box<dyn SerialLink>> {
         let mut serial = open_port(&port.name, baud)?;
         // Release both control lines so an auto-reset circuit does not hold
-        // the chip in reset or in download mode while monitoring.
-        let _ = serial.write_data_terminal_ready(false);
+        // the chip in reset or in download mode while monitoring. RTS is
+        // released first: the intermediate state RTS asserted with DTR
+        // released would pull EN low and reset the chip.
         let _ = serial.write_request_to_send(false);
+        let _ = serial.write_data_terminal_ready(false);
         Ok(Box::new(NativeSerial { port: serial, usb: usb_port_info(port), name: port.name.clone(), baud }))
     }
 }
