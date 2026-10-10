@@ -1,0 +1,23 @@
+# Rust
+/target/
+
+# Node / frontend
+node_modules/
+/apps/desktop/dist/
+/apps/desktop/.vite/
+*.tsbuildinfo
+
+# Tauri
+/apps/desktop/src-tauri/gen/schemas/
+
+# Editors and OS
+.DS_Store
+.idea/
+*.swp
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Environment
+.env
+.env.*
