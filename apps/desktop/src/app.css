@@ -1,0 +1,186 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/jetbrains-mono';
+
+/*
+ * Design tokens. Components use the Tailwind utilities generated from the
+ * @theme block below; the values switch with the data-theme attribute on
+ * the document element.
+ */
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0d0f13;
+  --surface: #13161b;
+  --surface-2: #191d24;
+  --surface-3: #20252e;
+  --overlay: rgb(5 6 8 / 0.6);
+  --border: #252a33;
+  --border-strong: #343b47;
+  --fg: #e5e8ed;
+  --fg-muted: #a0a8b6;
+  --fg-subtle: #6e7787;
+  --accent: #f07a45;
+  --accent-hover: #f58c5c;
+  --accent-fg: #1a0c05;
+  --accent-soft: rgb(240 122 69 / 0.14);
+  --focus: #f07a45;
+  --success: #3ec28a;
+  --success-soft: rgb(62 194 138 / 0.13);
+  --warning: #e5ad4a;
+  --warning-soft: rgb(229 173 74 / 0.13);
+  --danger: #f0565c;
+  --danger-hover: #f46b70;
+  --danger-fg: #1c0506;
+  --danger-soft: rgb(240 86 92 / 0.13);
+  --info: #5b9bff;
+  --info-soft: rgb(91 155 255 / 0.13);
+  --shadow: 0 8px 32px rgb(0 0 0 / 0.45), 0 1px 2px rgb(0 0 0 / 0.4);
+  --log-bg: #0b0d10;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --surface-2: #f3f4f7;
+  --surface-3: #e9ecf1;
+  --overlay: rgb(20 23 28 / 0.35);
+  --border: #e1e4ea;
+  --border-strong: #cdd2da;
+  --fg: #15181d;
+  --fg-muted: #535c6b;
+  --fg-subtle: #858d9b;
+  --accent: #c2410c;
+  --accent-hover: #a8380a;
+  --accent-fg: #ffffff;
+  --accent-soft: rgb(194 65 12 / 0.09);
+  --focus: #c2410c;
+  --success: #12825a;
+  --success-soft: rgb(18 130 90 / 0.09);
+  --warning: #9a6200;
+  --warning-soft: rgb(196 125 0 / 0.11);
+  --danger: #c9262d;
+  --danger-hover: #ad1f25;
+  --danger-fg: #ffffff;
+  --danger-soft: rgb(201 38 45 / 0.08);
+  --info: #1d63d6;
+  --info-soft: rgb(29 99 214 / 0.08);
+  --shadow: 0 10px 30px rgb(15 20 30 / 0.14), 0 1px 2px rgb(15 20 30 / 0.08);
+  --log-bg: #fbfbfc;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-overlay: var(--overlay);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-subtle: var(--fg-subtle);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-soft: var(--accent-soft);
+  --color-focus: var(--focus);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-hover: var(--danger-hover);
+  --color-danger-fg: var(--danger-fg);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-log-bg: var(--log-bg);
+  --shadow-popover: var(--shadow);
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+}
+
+@layer base {
+  html {
+    font-size: 13px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  html,
+  body,
+  #app {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    font-feature-settings: 'cv11', 'ss01';
+    line-height: 1.45;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: default;
+  }
+
+  /* Text that users routinely copy stays selectable. */
+  input,
+  textarea,
+  .selectable,
+  .font-mono {
+    user-select: text;
+    -webkit-user-select: text;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 1px;
+  }
+
+  ::selection {
+    background: var(--accent-soft);
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--border-strong);
+    border: 3px solid transparent;
+    border-radius: 999px;
+    background-clip: padding-box;
+  }
+
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  button {
+    cursor: default;
+  }
+}
+
+@layer components {
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
