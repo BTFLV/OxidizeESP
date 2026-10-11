@@ -18,7 +18,7 @@ Separate DMGs are produced for Apple Silicon and Intel; no universal binary is b
 
 ## Rolling releases
 
-`.github/workflows/rolling-release.yml` publishes the `rolling` prerelease named **OxidizeESP Rolling Release**:
+`.github/workflows/rolling-release.yml` publishes the `rolling` release named **Current OxidizeESP Build** and marks it as the latest release:
 
 1. The workflow starts when CI succeeds for a push to `main` (or manually, in which case it runs the CI checks
    itself).

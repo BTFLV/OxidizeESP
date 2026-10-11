@@ -1,7 +1,7 @@
 name: Rolling release
 
 # Builds installers for every commit on main that passes CI and publishes
-# them as the "rolling" prerelease. The release is replaced only after all
+# them as the "rolling" release. The release is replaced only after all
 # platform builds succeeded, and only by the newest commit on main.
 
 on:
@@ -18,7 +18,7 @@ env:
   CARGO_TERM_COLOR: always
   NODE_VERSION: 24
   RELEASE_TAG: rolling
-  RELEASE_NAME: OxidizeESP Rolling Release
+  RELEASE_NAME: Current OxidizeESP Build
   # Commit validated by CI (workflow_run) or selected for a manual run.
   SOURCE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
 
@@ -218,7 +218,7 @@ jobs:
           short=${SOURCE_SHA::7}
           server=${GITHUB_SERVER_URL}/${GH_REPO}
           cat > notes.md <<EOF
-          Automated build of the latest commit on \`main\`. Rolling releases are untested development builds and are replaced on every push.
+          Automated build of the latest commit on \`main\`. This release is replaced whenever new code is pushed.
 
           **Commit:** [\`${short}\`](${server}/commit/${SOURCE_SHA})
           **Build:** [run ${GITHUB_RUN_NUMBER}](${server}/actions/runs/${GITHUB_RUN_ID}), $(date -u +"%Y-%m-%d %H:%M UTC")
@@ -245,7 +245,7 @@ jobs:
           # Drafts do not create their tag, so a unique temporary tag name
           # keeps the staged release separate from the published one.
           gh release create "$STAGING_TAG" dist/* \
-            --draft --prerelease --latest=false \
+            --draft --prerelease=false --latest \
             --title "$RELEASE_NAME" --notes-file notes.md --target "$SOURCE_SHA"
           id=$(gh api "repos/$GH_REPO/releases" --paginate \
             --jq ".[] | select(.draft and .tag_name == \"$STAGING_TAG\") | .id")
@@ -295,7 +295,7 @@ jobs:
             gh api -X DELETE "repos/$GH_REPO/releases/$old"
           done
           gh api -X PATCH "repos/$GH_REPO/releases/$DRAFT_ID" \
-            -F draft=false -F prerelease=true -f make_latest=false \
+            -F draft=false -F prerelease=false -f make_latest=true \
             -f tag_name="$RELEASE_TAG" -f target_commitish="$SOURCE_SHA" > /dev/null
           echo "Published $RELEASE_NAME for $SOURCE_SHA."
 

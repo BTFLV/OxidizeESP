@@ -101,7 +101,7 @@ The ESP8266 is not supported.
 ## Installation
 
 Development builds of the latest commit on `main` are published as the
-[rolling release](../../releases/tag/rolling). Download the file for your platform and verify it against
+[latest build](../../releases/tag/rolling). Download the file for your platform and verify it against
 `SHA256SUMS.txt` if desired.
 
 - **macOS:** the app is signed with a Developer ID certificate and notarized by Apple. Open the DMG, drag
