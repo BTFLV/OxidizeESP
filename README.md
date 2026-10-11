@@ -14,15 +14,7 @@ separately installed espflash executable and no network connection.
 
 OxidizeESP is an independent project and is not affiliated with or endorsed by Espressif Systems.
 
-## Screenshots
-
-The screenshots show the application with a simulated ESP32-C3 at the minimum window size.
-
-<p align="center">
-  <img src="docs/screenshots/dashboard.png" width="31%" alt="Dashboard with a verified ESP32-C3">
-  <img src="docs/screenshots/flash.png" width="31%" alt="Flash view with the flash layout of an application image">
-  <img src="docs/screenshots/monitor.png" width="31%" alt="Serial monitor with decoded panic backtrace">
-</p>
+![The dashboard shows the serial ports of the computer and the chip details verified by the bootloader (simulated ESP32-C3)](docs/screenshots/dashboard.png)
 
 ## Features
 
@@ -39,6 +31,11 @@ The screenshots show the application with a simulated ESP32-C3 at the minimum wi
 - Writes raw binaries to an explicitly entered offset, with validation of alignment, size and image chip ID
 - Flash mode, size and frequency, custom bootloader and partition table, minimum chip revision, MMU page size
 - Verification with device-side checksums, skipping of unchanged regions and real progress reporting
+
+Before anything is written, the flash view shows the exact layout the image will produce and how much of the
+application partition it uses.
+
+![Flash view with the layout of the application image: bootloader, partition table and application](docs/screenshots/flash.png)
 
 **Backup and checksums**
 - Reads the complete flash or a region to a file, streamed in bounded chunks with progress and cancellation
@@ -57,6 +54,10 @@ The screenshots show the application with a simulated ESP32-C3 at the minimum wi
 - Resolves code addresses (for example in panic backtraces) to functions and source lines using the firmware ELF
 - Sends text with a selectable line ending, resets the device, saves the buffer or records to a file
 - Reconnects automatically when the same device is plugged in again
+
+Panic backtraces are resolved to functions and source lines when the firmware ELF is selected.
+
+![Serial monitor with colored log output and a decoded panic backtrace](docs/screenshots/monitor.png)
 
 **Partition tables**
 - Opens CSV and binary partition tables or reads the table from the device
