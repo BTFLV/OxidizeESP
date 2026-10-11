@@ -546,12 +546,12 @@ mod tests {
     #[test]
     fn decoder_handles_split_multibyte_sequences() {
         let mut d = Utf8Decoder::default();
-        let bytes = "grüße 🙈".as_bytes();
+        let bytes = "grüße 𝄞".as_bytes();
         let mut out = String::new();
         for b in bytes {
             out.push_str(&d.decode(std::slice::from_ref(b)));
         }
-        assert_eq!(out, "grüße 🙈");
+        assert_eq!(out, "grüße 𝄞");
     }
 
     #[test]

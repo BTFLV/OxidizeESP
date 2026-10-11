@@ -106,7 +106,7 @@ Development builds of the latest commit on `main` are published as the
 
 - **macOS:** the app is signed with a Developer ID certificate and notarized by Apple. Open the DMG, drag
   OxidizeESP to Applications and open it as usual.
-- **Windows:** the installer is not code signed yet, so SmartScreen may warn about an unrecognized app. Choose
+- **Windows:** the installer is not code signed, so SmartScreen may warn about an unrecognized app. Choose
   **More info → Run anyway** to install. The installer installs for the current user and needs no administrator
   rights.
 
@@ -166,12 +166,6 @@ Application logs can be opened from **Settings → Logging**.
 - [esp-idf-part](https://github.com/esp-rs/esp-idf-part): ESP-IDF partition table parsing
 - [Tauri](https://tauri.app): the desktop application framework
 - [esptool](https://github.com/espressif/esptool): Espressif's official flashing tool
-
-## Contributing
-
-Issues and pull requests are welcome. Please run the checks described in
-[docs/development.md](docs/development.md) before submitting changes, and include the chip, board and
-operating system when reporting hardware problems.
 
 ## License
 

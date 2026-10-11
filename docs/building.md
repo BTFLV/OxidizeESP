@@ -44,8 +44,9 @@ Published files:
 
 ## Code signing
 
-The official release builds use the credentials described below. Without credentials, the macOS app is ad-hoc signed (`signingIdentity: "-"`) and not notarized, and the Windows
-installer is unsigned. Users see Gatekeeper and SmartScreen warnings; the README explains how to open the app.
+The macOS release builds are signed and notarized with the credentials described below. Without credentials, the
+macOS app is only ad-hoc signed (`signingIdentity: "-"`) and not notarized, so Gatekeeper warns on first launch.
+The Windows installer is never signed.
 
 ### macOS signing and notarization
 
@@ -61,9 +62,7 @@ Add these repository secrets; the workflow exports them for the Tauri bundler on
 
 See the [Tauri macOS signing guide](https://v2.tauri.app/distribute/sign/macos/).
 
-### Windows signing
+### Windows
 
-Windows signing is not configured. Tauri supports signing through `bundle.windows.certificateThumbprint` or a
-custom `bundle.windows.signCommand` (for example for Azure Trusted Signing); see the
-[Tauri Windows signing guide](https://v2.tauri.app/distribute/sign/windows/). Add the required secrets and a
-step that provides them in the Windows build job, similar to the macOS step.
+The Windows installer is not code signed. SmartScreen may warn about an unrecognized app when it is run for the
+first time.
