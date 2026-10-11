@@ -56,7 +56,8 @@ Add these repository secrets; the workflow exports them for the Tauri bundler on
 | `APPLE_CERTIFICATE` | Base64-encoded `.p12` export of a Developer ID Application certificate |
 | `APPLE_CERTIFICATE_PASSWORD` | Password of the `.p12` file |
 | `APPLE_SIGNING_IDENTITY` | Identity name, for example `Developer ID Application: Name (TEAMID)` |
-| `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID` | Apple ID, app-specific password and team ID for notarization |
+| `APPLE_API_KEY`, `APPLE_API_ISSUER`, `APPLE_API_KEY_CONTENT` | Notarization with an App Store Connect API key: key ID, issuer ID and the full text of the `.p8` file (preferred) |
+| `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID` | Alternative notarization with an Apple ID, app-specific password and team ID |
 
 See the [Tauri macOS signing guide](https://v2.tauri.app/distribute/sign/macos/).
 
