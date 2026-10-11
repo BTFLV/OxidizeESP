@@ -104,13 +104,11 @@ Development builds of the latest commit on `main` are published as the
 [rolling release](../../releases/tag/rolling). Download the file for your platform and verify it against
 `SHA256SUMS.txt` if desired.
 
-The builds are currently not signed with a paid developer certificate:
-
-- **macOS:** the app is ad-hoc signed but not notarized. Open the DMG, drag OxidizeESP to Applications and open
-  it. If macOS reports that it cannot verify the developer, open **System Settings → Privacy & Security** and
-  choose **Open Anyway** for OxidizeESP.
-- **Windows:** SmartScreen may warn about an unrecognized app. Choose **More info → Run anyway** to install. The
-  installer installs for the current user and needs no administrator rights.
+- **macOS:** the app is signed with a Developer ID certificate and notarized by Apple. Open the DMG, drag
+  OxidizeESP to Applications and open it as usual.
+- **Windows:** the installer is not code signed yet, so SmartScreen may warn about an unrecognized app. Choose
+  **More info → Run anyway** to install. The installer installs for the current user and needs no administrator
+  rights.
 
 Depending on your board, you may need a driver for its USB-to-UART bridge (Silicon Labs CP210x, WCH CH34x or
 FTDI). Boards that use the chip's native USB interface need no driver on current macOS and Windows versions.

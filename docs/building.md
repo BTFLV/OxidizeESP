@@ -44,7 +44,7 @@ Published files:
 
 ## Code signing
 
-Without credentials, the macOS app is ad-hoc signed (`signingIdentity: "-"`) and not notarized, and the Windows
+The official release builds use the credentials described below. Without credentials, the macOS app is ad-hoc signed (`signingIdentity: "-"`) and not notarized, and the Windows
 installer is unsigned. Users see Gatekeeper and SmartScreen warnings; the README explains how to open the app.
 
 ### macOS signing and notarization

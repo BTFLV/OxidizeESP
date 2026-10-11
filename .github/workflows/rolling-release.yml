@@ -235,7 +235,7 @@ jobs:
 
           ### Signing
 
-          Unless signing credentials are configured for this repository, the macOS app is only ad-hoc signed and not notarized, and the Windows installer is not code signed. macOS Gatekeeper and Windows SmartScreen will show warnings when the application is opened for the first time.
+          The macOS apps are signed with a Developer ID certificate and notarized by Apple. The Windows installer is not code signed, so Windows SmartScreen may show a warning when it is run for the first time.
           EOF
 
       - name: Stage draft release
