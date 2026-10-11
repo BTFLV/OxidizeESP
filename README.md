@@ -12,12 +12,17 @@ OxidizeESP puts the functionality of [espflash](https://github.com/esp-rs/espfla
 interface. It talks to devices through the espflash Rust library directly, so it needs no Python, no
 separately installed espflash executable and no network connection.
 
-> [!NOTE]
-> OxidizeESP is in early development. All features are implemented and covered by automated tests against
-> simulated hardware, but the hardware-dependent workflows have not yet been verified across a wide range of
-> real boards. Please report problems with the chip, board and operating system you are using.
-
 OxidizeESP is an independent project and is not affiliated with or endorsed by Espressif Systems.
+
+## Screenshots
+
+The screenshots show the application with a simulated ESP32-C3 at the minimum window size.
+
+<p align="center">
+  <img src="docs/screenshots/dashboard.png" width="31%" alt="Dashboard with a verified ESP32-C3">
+  <img src="docs/screenshots/flash.png" width="31%" alt="Flash view with the flash layout of an application image">
+  <img src="docs/screenshots/monitor.png" width="31%" alt="Serial monitor with decoded panic backtrace">
+</p>
 
 ## Features
 
