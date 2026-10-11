@@ -3,6 +3,12 @@ name: CI
 on:
   push:
     branches: [main]
+    # Documentation-only changes need neither checks nor a new release.
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE-*'
+      - '.gitignore'
   workflow_dispatch:
   workflow_call:
 

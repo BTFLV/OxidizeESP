@@ -184,12 +184,19 @@ jobs:
       - name: Check that this commit is still the newest on main
         id: head
         run: |
-          head=$(gh api "repos/$GH_REPO/commits/main" --jq .sha)
-          if [ "$head" != "$SOURCE_SHA" ]; then
-            echo "main has moved to $head; a newer run will publish."
-            echo "current=false" >> "$GITHUB_OUTPUT"
-          else
+          # Commits that only touch documentation do not start CI, so they do
+          # not make this build outdated.
+          is_current() {
+            head=$(gh api "repos/$GH_REPO/commits/main" --jq .sha)
+            [ "$head" = "$SOURCE_SHA" ] && return 0
+            changed=$(gh api "repos/$GH_REPO/compare/$SOURCE_SHA...$head" --jq '.files[].filename') || return 1
+            [ -n "$changed" ] && ! printf '%s\n' "$changed" | grep -qvE '\.md$|^docs/|^LICENSE-|^\.gitignore$'
+          }
+          if is_current; then
             echo "current=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "main has moved on; a newer run will publish."
+            echo "current=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Write release notes
@@ -247,9 +254,16 @@ jobs:
         run: |
           # Re-check right before switching: a newer commit must not be
           # replaced by this older build.
-          head=$(gh api "repos/$GH_REPO/commits/main" --jq .sha)
-          if [ "$head" != "$SOURCE_SHA" ]; then
-            echo "main moved to $head while staging; discarding this draft."
+          # Commits that only touch documentation do not start CI, so they do
+          # not make this build outdated.
+          is_current() {
+            head=$(gh api "repos/$GH_REPO/commits/main" --jq .sha)
+            [ "$head" = "$SOURCE_SHA" ] && return 0
+            changed=$(gh api "repos/$GH_REPO/compare/$SOURCE_SHA...$head" --jq '.files[].filename') || return 1
+            [ -n "$changed" ] && ! printf '%s\n' "$changed" | grep -qvE '\.md$|^docs/|^LICENSE-|^\.gitignore$'
+          }
+          if ! is_current; then
+            echo "main moved on while staging; discarding this draft."
             gh api -X DELETE "repos/$GH_REPO/releases/$DRAFT_ID"
             exit 0
           fi
