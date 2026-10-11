@@ -55,6 +55,8 @@
   let autoscroll = $state(settings.value.monitor.autoscroll);
   let resetOnStart = $state(settings.value.monitor.resetOnStart);
   let receivedAtPause = $state(0);
+  // The buffer is not reactive itself; `version` changes whenever it does.
+  const bufferLength = $derived((monitor.version, monitor.buffer.length));
 
   function togglePause() {
     if (!monitor.paused) receivedAtPause = monitor.received;
@@ -324,10 +326,10 @@
         {/snippet}
       </Tooltip>
       <Button variant="ghost" size="sm" aria-pressed={showTimestamps} class={cn(showTimestamps && 'text-fg')} onclick={() => (showTimestamps = !showTimestamps)}>
-        <Clock /> Timestamps
+        <Clock /> <span class="max-xl:sr-only">Timestamps</span>
       </Button>
       <Button variant="ghost" size="sm" aria-pressed={autoscroll} class={cn(autoscroll && 'text-fg')} onclick={() => (autoscroll = !autoscroll)}>
-        <ScrollText /> Autoscroll
+        <ScrollText /> <span class="max-xl:sr-only">Autoscroll</span>
       </Button>
       <div class="mx-1 h-5 w-px bg-border"></div>
       <Tooltip text="Copy the displayed lines">
@@ -337,7 +339,7 @@
       </Tooltip>
       <Tooltip text="Save the buffer to a file">
         {#snippet children(props)}
-          <Button {...props} variant="ghost" size="icon-sm" aria-label="Save log" disabled={!monitor.buffer.length} onclick={saveLog}><Save /></Button>
+          <Button {...props} variant="ghost" size="icon-sm" aria-label="Save log" disabled={bufferLength === 0} onclick={saveLog}><Save /></Button>
         {/snippet}
       </Tooltip>
       <Tooltip text="Clear the display">
@@ -364,7 +366,7 @@
     <LogView {rows} {showTimestamps} {autoscroll} search={search.trim()} {activeRow} />
     {#if rows.length === 0}
       <div class="pointer-events-none absolute inset-0 flex items-center justify-center text-[13px] text-fg-subtle">
-        {#if filter && monitor.buffer.length}
+        {#if filter && bufferLength > 0}
           No lines match the filter.
         {:else if monitor.status === 'running'}
           Waiting for output…
@@ -408,7 +410,7 @@
     />
     <Button type="submit" disabled={monitor.status !== 'running'}><Send /> Send</Button>
     <span class="ml-2 shrink-0 text-2xs text-fg-subtle tabular">
-      {monitor.buffer.length.toLocaleString('en-US')} / {monitor.buffer.capacity.toLocaleString('en-US')} lines
+      {bufferLength.toLocaleString('en-US')} / {monitor.buffer.capacity.toLocaleString('en-US')} lines
     </span>
   </form>
 </div>
