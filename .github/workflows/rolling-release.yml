@@ -18,7 +18,7 @@ env:
   CARGO_TERM_COLOR: always
   NODE_VERSION: 24
   RELEASE_TAG: rolling
-  RELEASE_NAME: Current OxidizeESP Build
+  RELEASE_NAME: Latest OxidizeESP Release
   # Commit validated by CI (workflow_run) or selected for a manual run.
   SOURCE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
 
