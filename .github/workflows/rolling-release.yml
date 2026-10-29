@@ -48,12 +48,6 @@ jobs:
             bundles: dmg
             source: bundle/dmg/*.dmg
             asset: OxidizeESP-macos-arm64.dmg
-          - name: macOS x64
-            runner: macos-latest
-            target: x86_64-apple-darwin
-            bundles: dmg
-            source: bundle/dmg/*.dmg
-            asset: OxidizeESP-macos-x64.dmg
           - name: Windows x64
             runner: windows-latest
             target: x86_64-pc-windows-msvc
@@ -185,7 +179,7 @@ jobs:
       - name: Verify artifacts and compute checksums
         working-directory: dist
         run: |
-          for f in OxidizeESP-macos-arm64.dmg OxidizeESP-macos-x64.dmg OxidizeESP-windows-x64-setup.exe; do
+          for f in OxidizeESP-macos-arm64.dmg OxidizeESP-windows-x64-setup.exe; do
             if [ ! -s "$f" ]; then
               echo "::error::Missing or empty artifact $f"
               exit 1
@@ -227,15 +221,14 @@ jobs:
 
           | Platform | File |
           | --- | --- |
-          | macOS, Apple Silicon | \`OxidizeESP-macos-arm64.dmg\` |
-          | macOS, Intel | \`OxidizeESP-macos-x64.dmg\` |
+          | macOS, Apple Silicon (arm64) | \`OxidizeESP-macos-arm64.dmg\` |
           | Windows x64 | \`OxidizeESP-windows-x64-setup.exe\` |
 
           Verify downloads against \`SHA256SUMS.txt\`.
 
           ### Signing
 
-          The macOS apps are signed with a Developer ID certificate and notarized by Apple. The Windows installer is not code signed, so Windows SmartScreen may show a warning when it is run for the first time.
+          The macOS app is signed with a Developer ID certificate and notarized by Apple. The Windows installer is not code signed, so Windows SmartScreen may show a warning when it is run for the first time.
           EOF
 
       - name: Stage draft release
@@ -254,8 +247,8 @@ jobs:
             exit 1
           fi
           assets=$(gh api "repos/$GH_REPO/releases/$id" --jq '.assets | length')
-          if [ "$assets" -ne 4 ]; then
-            echo "::error::Expected 4 assets on the draft release, found $assets."
+          if [ "$assets" -ne 3 ]; then
+            echo "::error::Expected 3 assets on the draft release, found $assets."
             exit 1
           fi
           echo "id=$id" >> "$GITHUB_OUTPUT"

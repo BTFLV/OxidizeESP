@@ -72,7 +72,6 @@ Panic backtraces are resolved to functions and source lines when the firmware EL
 | Platform | Architecture | Package |
 | --- | --- | --- |
 | macOS 11 or later | Apple Silicon (arm64) | DMG |
-| macOS 11 or later | Intel (x86_64) | DMG |
 | Windows 10 or later | x64 | NSIS installer (per-user) |
 
 The code base contains no platform-specific assumptions that would prevent a Linux build, but Linux packages

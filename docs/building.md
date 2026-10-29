@@ -7,14 +7,13 @@ From `apps/desktop`:
 ```sh
 npm run tauri build                                              # current platform
 npm run tauri build -- --target aarch64-apple-darwin --bundles dmg
-npm run tauri build -- --target x86_64-apple-darwin --bundles dmg
 npm run tauri build -- --target x86_64-pc-windows-msvc --bundles nsis   # on Windows
 ```
 
-Install the Rust target first, for example `rustup target add x86_64-apple-darwin`. Both macOS architectures can
-be built on either type of Mac. Installers are written to `target/<target>/release/bundle/`.
+Install the Rust target first, for example `rustup target add aarch64-apple-darwin`. Installers are written to
+`target/<target>/release/bundle/`.
 
-Separate DMGs are produced for Apple Silicon and Intel; no universal binary is built.
+macOS builds target Apple Silicon (arm64) only; no Intel or universal binary is built.
 
 ## Rolling releases
 
@@ -22,7 +21,7 @@ Separate DMGs are produced for Apple Silicon and Intel; no universal binary is b
 
 1. The workflow starts when CI succeeds for a push to `main` (or manually, in which case it runs the CI checks
    itself).
-2. The three platforms are built in parallel from the validated commit and uploaded as workflow artifacts.
+2. The two platforms (macOS arm64, Windows x64) are built in parallel from the validated commit and uploaded as workflow artifacts.
    A newer commit cancels builds of an older one.
 3. After all builds succeeded, the publish job verifies that every installer is present, computes
    `SHA256SUMS.txt` and checks that the commit is still the newest on `main`.
@@ -37,8 +36,7 @@ Published files:
 
 | File | Platform |
 | --- | --- |
-| `OxidizeESP-macos-arm64.dmg` | macOS, Apple Silicon |
-| `OxidizeESP-macos-x64.dmg` | macOS, Intel |
+| `OxidizeESP-macos-arm64.dmg` | macOS 11 or later, Apple Silicon (arm64) |
 | `OxidizeESP-windows-x64-setup.exe` | Windows x64 (NSIS, per-user install) |
 | `SHA256SUMS.txt` | SHA-256 checksums of the files above |
 
